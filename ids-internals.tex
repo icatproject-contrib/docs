@@ -1,0 +1,73 @@
+\documentclass[paper=a4]{scrartcl}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{graphicx}
+\usepackage{url}
+
+\title{Overview of IDS Internals}
+\author{Rolf Krahl}
+
+% Add a revision hint as a unnumbered footnote
+\newcommand{\revhint}{%
+  \begingroup%
+  \let\thefootnote\relax%
+  \footnote{Revision: \input{.revision}}%
+  \addtocounter{footnote}{-1}%
+  \endgroup%
+}
+
+\graphicspath{{../Abbildungen/}}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+\revhint{}%
+The ICAT Data Service (IDS) operates with delayed actions, internal
+states, and multiple threads.  This makes it somewhat difficult to
+understand from mere reading the sources what actions may be performed
+under certain conditions.  A detailed knowlegde of the internal
+processes of IDS may be needed to properly implement a storage plugin
+in a non-trivial setup, in particular the context that each of the
+plugin's methods may be called in.  This text shall provide a
+reference to accommodate this need.  It is however restricted to the
+case that the IDS is configured as a two level storage and the storage
+unit is dataset.
+
+The workflow in the IDS can be sketched as follows: the IDS waits for
+incoming user requests coming over the RESTful interface.  In some
+cases, these requests may be completed immediately.  In other cases,
+the request only queue a deferred operation that will be processed in
+the background later.  Section \ref{sec:requests} lists the user
+request and what is done in each case.  The various operations that
+are queued for any given dataset are kept track of in a finite state
+machine.  This is detailed in Section \ref{sec:fsm}.  When processing
+the queue, a new thread is started that performs the operation.  What
+each of the deferred operations do is described in Section
+\ref{sec:defops}.
+
+
+\section{User requests}
+\label{sec:requests}
+
+\ldots
+
+
+\section{Finite state machine}
+\label{sec:fsm}
+
+\ldots
+
+
+\section{Deferred operations}
+\label{sec:defops}
+
+\ldots
+
+
+
+\end{document}
+
+
