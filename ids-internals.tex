@@ -34,25 +34,127 @@ in a non-trivial setup, in particular the context that each of the
 plugin's methods may be called in.  This text shall provide a
 reference to accommodate this need.  It is however restricted to the
 case that the IDS is configured as a two level storage and the storage
-unit is dataset.
+unit is dataset.  The text is based on IDS server 1.3.0.
 
 The workflow in the IDS can be sketched as follows: the IDS waits for
-incoming user requests coming over the RESTful interface.  In some
-cases, these requests may be completed immediately.  In other cases,
-the request only queue a deferred operation that will be processed in
-the background later.  Section \ref{sec:requests} lists the user
-request and what is done in each case.  The various operations that
-are queued for any given dataset are kept track of in a finite state
-machine.  This is detailed in Section \ref{sec:fsm}.  When processing
-the queue, a new thread is started that performs the operation.  What
-each of the deferred operations do is described in Section
-\ref{sec:defops}.
+incoming service requests coming from the user.  In some cases, these
+requests may be completed immediately.  In other cases, a deferred
+operation that will be processed in the background later is queued.
+Section \ref{sec:requests} lists the service request and what is done
+in each case.  The various operations that are queued for any given
+dataset are kept track of in a finite state machine.  This is detailed
+in Section \ref{sec:fsm}.  When processing the queue, each of the
+deferred operations is executed in a separate thread.  Section
+\ref{sec:defops} describes what is being done for each of the
+operations.
 
 
-\section{User requests}
+\section{Internal states}
+\label{sec:states}
+
+The processing of a data object is influenced by its internal state
+and what operations have been queued for them.  We say that an
+operation is \emph{in process} on a dataset if this operation is
+either in the queue or if it is currently being executed for that
+dataset.
+
+The status of a dataset may either be \texttt{ONLINE},
+\texttt{ARCHIVED}, or \texttt{RESTORING}.  It is \texttt{RESTORING} if
+a \texttt{RESTORE} operation on that dataset is in process.  If this
+is not the case, the status is \texttt{ARCHIVED} if any other
+operation then \texttt{WRITE} is in process or if the dataset is not
+empty (e.g. related datafiles exist), but the dataset directory does
+not exist in the main storage.  In all other cases, the status is
+\texttt{ONLINE}.
+
+
+\section{Service requests}
 \label{sec:requests}
 
-\ldots
+In this section, we consider each IDS request and describe in detail
+what is done in each case.  We consider only requests that interact in
+any way with the storage plugin.  The requests \texttt{getApiVersion},
+\texttt{getServiceStatus}, \texttt{getSize} \texttt{isReadOnly},
+\texttt{isTwoLevel}, and \texttt{ping} are thus skipped.
+
+Several service calls that deal with a selection of data objects in
+the storage expect lists of datafile, dataset, and investigation ids
+as parameter.  Most internal processing is done at dataset level and
+it only matters which datasets are concerned.  In these cases, we use
+the term \emph{selected datasets} regardless whether the objects have
+actually been selected by datafile, dataset, or investigation id.  In
+a similar manner, we use the term \emph{selected datafiles}.
+
+\subsection{\texttt{archive}}
+
+Queue an \texttt{ARCHIVE} deferred operation for each of the selected
+datasets.
+
+\subsection{\texttt{delete}}
+
+If any of the selected datasets is not \texttt{ONLINE}
+(Sec.\ \ref{sec:states}), queue a \texttt{RESTORE} deferred operation
+for them and throw a \texttt{DataNotOnlineException}.
+
+Otherwise delete the selected datafiles from ICAT and from the main
+storage.  Finally queue a \texttt{WRITE} deferred operation for each
+of the selected datasets.
+
+\subsection{\texttt{getData}}
+
+If any of the selected datasets is not \texttt{ONLINE}
+(Sec.\ \ref{sec:states}), queue a \texttt{RESTORE} deferred operation
+for them and throw a \texttt{DataNotOnlineException}.
+
+Otherwise get the selected datafiles from the main storage and stream
+their content to the client.
+
+\subsection{\texttt{getLink}}
+
+If the dataset related to the selected datafile is not \texttt{ONLINE}
+(Sec.\ \ref{sec:states}), queue a \texttt{RESTORE} deferred operation
+for it and throw a \texttt{DataNotOnlineException}.
+
+Otherwise get the path of the file from main storage, set an ACL to
+grant read permission to the user on the file, and create a link to
+the file.
+
+\subsection{\texttt{getStatus}}
+
+Return \texttt{ONLINE} if all selected datasets are \texttt{ONLINE}
+(Sec.\ \ref{sec:states}), otherwise return either \texttt{ARCHIVED} or
+\texttt{RESTORING}.
+
+\subsection{\texttt{isPrepared}}
+
+If any of the selected datasets (as stored in the previously prepared
+data selection) is not \texttt{ONLINE} (Sec.\ \ref{sec:states}), queue
+a \texttt{RESTORE} deferred operation for them and return
+\texttt{false}.
+
+Otherwise return \texttt{true}.
+
+\subsection{\texttt{prepareData}}
+
+If any of the selected datasets is not \texttt{ONLINE}
+(Sec.\ \ref{sec:states}), queue a \texttt{RESTORE} deferred operation
+for them.  Store the data selection and other parameter of the request
+and return the prepared id for later referral.
+
+\subsection{\texttt{put}}
+
+If the dataset referenced in the request is not \texttt{ONLINE}
+(Sec.\ \ref{sec:states}), queue a \texttt{RESTORE} deferred operation
+for it and throw a \texttt{DataNotOnlineException}.
+
+Otherwise store the uploaded file in the main storage, create the
+datafile object in ICAT, and queue a \texttt{WRITE} deferred operation
+for the dataset.
+
+\subsection{\texttt{restore}}
+
+Queue an \texttt{RESTORE} deferred operation for each of the selected
+datasets.
 
 
 \section{Finite state machine}
