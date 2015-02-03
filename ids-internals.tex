@@ -191,9 +191,40 @@ same dataset pushes this delay further.
 \section{Deferred operations}
 \label{sec:defops}
 
-\ldots
+When the queue of deferred operations is processed, starts a new
+thread is started to execute each of them.  This section describes
+what these threads do in each case.
 
+\subsection{\texttt{ARCHIVE}}
 
+Delete the dataset from the main storage.
+
+\subsection{\texttt{RESTORE}}
+
+Get the ZIP file of the dataset from the archive storage, extract the
+datafiles from it, and stores the datafiles in the main storage.
+
+\subsection{\texttt{WRITE}}
+
+If the dataset directory does not exist in the main storage, delete
+the ZIP file of the dataset from archive storage.
+
+Otherwise create a new ZIP file, get all datafiles that belong to the
+dataset (according to ICAT) from the main storage and add them to the
+ZIP file.  Store this ZIP file in the archive storage.
+
+\subsection{\texttt{WRITE\_THEN\_ARCHIVE}}
+
+As the name suggests, same as \texttt{WRITE} and then
+\texttt{ARCHIVE}:
+
+If the dataset directory does not exist in the main storage, delete
+the ZIP file of the dataset from archive storage.
+
+Otherwise create a new ZIP file, get all datafiles that belong to the
+dataset (according to ICAT) from the main storage and add them to the
+ZIP file.  Store this ZIP file in the archive storage.  Delete the
+dataset from the main storage.
 
 \end{document}
 
