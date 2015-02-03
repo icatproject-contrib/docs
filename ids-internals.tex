@@ -160,7 +160,32 @@ datasets.
 \section{Finite state machine}
 \label{sec:fsm}
 
-\ldots
+The finite state machine manages the queue of deferred operations for
+each dataset.  The operation may be changed if another operation is
+queued for the same dataset while the previous one is still waiting in
+the queue, see Tab.\ \ref{tab:fsm} for the update matrix.
+\begin{table}
+  \centering
+  \begin{tabular}{l|lll}
+                                  & \texttt{ARCHIVE} & \texttt{RESTORE} & \texttt{WRITE} \\
+    \hline
+    none                          & \texttt{ARCHIVE} & \texttt{RESTORE} & \texttt{WRITE} \\
+    \texttt{ARCHIVE}              & \texttt{ARCHIVE} & \texttt{RESTORE} & \texttt{WRITE\_THEN\_ARCHIVE} \\
+    \texttt{RESTORE}              & \texttt{ARCHIVE} & \texttt{RESTORE} & \texttt{WRITE} \\
+    \texttt{WRITE}                & \texttt{WRITE\_THEN\_ARCHIVE} & \texttt{WRITE} & \texttt{WRITE} \\
+    \texttt{WRITE\_THEN\_ARCHIVE} & \texttt{WRITE\_THEN\_ARCHIVE} & \texttt{WRITE} & \texttt{WRITE\_THEN\_ARCHIVE} \\
+  \end{tabular}
+  \caption{Update matrix for queued operations.  Matrix entries are
+    the result if a new operation (column) is queued while a previous
+    one (row) is still wating in the queue.}
+  \label{tab:fsm}
+\end{table}
+
+The queue is processed regularly by a timer task that starts a new
+thread to execute each of the pending operations.  \texttt{WRITE}
+operations are processed with a delay that is fixed when the oparation
+is queued.  Any subsequent \texttt{WRITE} operation queued for the
+same dataset pushes this delay further.
 
 
 \section{Deferred operations}
