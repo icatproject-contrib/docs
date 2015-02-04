@@ -228,6 +228,29 @@ dataset (according to ICAT) from the main storage and add them to the
 ZIP file.  Store this ZIP file in the archive storage.  Delete the
 dataset from the main storage.
 
+
+\section{Maintenance tasks}
+\label{sec:maintenance}
+
+There are some maintenance tasks running in the background
+independently from user actions.
+
+\subsection{\texttt{FileChecker}}
+
+Iterate over all datasets in the ICAT including their datafiles.  For
+each dataset, get the ZIP file from the archive storage, extract the
+datafiles from it, and check that the list of datafiles in the ZIP
+file matches the list of datafiles in the dataset and that length and
+checksum matches for each of the datafiles.
+
+\subsection{\texttt{Tidier}}
+
+Query the main storage plugin for a list of datasets to remove in
+order to get the overall size of the main storage below the configured
+limit.  Queue an \texttt{ARCHIVE} deferred operation for each of the
+returned datasets.
+
+
 \end{document}
 
 
