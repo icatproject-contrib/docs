@@ -182,8 +182,10 @@ the queue, see Tab.\ \ref{tab:fsm} for the update matrix.
 \end{table}
 
 The queue is processed regularly by a timer task that starts a new
-thread to execute each of the pending operations.  \texttt{WRITE}
-operations are processed with a delay that is fixed when the oparation
+thread to execute each of the pending operations.  The execution of a
+queued operation for a dataset is hold back while a previous operation
+for the same dataset is currently being executed.  \texttt{WRITE}
+operations are processed with a delay that is fixed when the operation
 is queued.  Any subsequent \texttt{WRITE} operation queued for the
 same dataset pushes this delay further.
 
