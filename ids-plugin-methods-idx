@@ -1,0 +1,77 @@
+	    Index of storage plugin method calls from IDS
+	    =============================================
+
+* archiveStorage.delete(DsInfo)
+
++ DsWriter.run(), thread/DsWriter.java:60
++ DsWriteThenArchiver.run(), thread/DsWriteThenArchiver.java:66
+
+* archiveStorage.get(DsInfo, Path)
+
++ FileChecker.CheckOneFile.run(), FileChecker.java:90
++ DsRestorer.run(), thread/DsRestorer.java:73
+
+* archiveStorage.put(DsInfo, InputStream)
+
++ DsWriter.run(), thread/DsWriter.java:88
++ DsWriteThenArchiver.run(), thread/DsWriteThenArchiver.java:94
+
+* mainStorage.exists(DsInfo)
+
++ IdsBean.restoreIfOffline(DsInfo, Set<Long>), IdsBean.java:442
+  called from:
+  - IdsBean.delete(...)
+  - IdsBean.getData(String, String, final long)
+  - IdsBean.getData(String, String, String, ...)
+  - IdsBean.put(...)
+  - IdsBean.getLink(...)
+  - IdsBean.isPrepared(...)
+  - IdsBean.prepareData(...)
++ IdsBean.getStatus(...), IdsBean.java:953
++ DsWriter.run(), thread/DsWriter.java:57
++ DsWriteThenArchiver.run(), thread/DsWriteThenArchiver.java:64
+
+* mainStorage.exists(String)
+
++ IdsBean.delete(...), IdsBean.java:524
+
+* mainStorage.delete(DsInfo)
+
++ DsArchiver.run(), thread/DsArchiver.java:29
++ DsWriter.run(), thread/DsWriter.java:59
++ DsWriteThenArchiver.run(), thread/DsWriteThenArchiver.java:101
+
+* mainStorage.delete(String, String, String)
+
++ IdsBean.delete(...), IdsBean.java:525
++ IdsBean.put(...), IdsBean.java:1255
+
+* mainStorage.get(String, String, String)
+
++ IdsBean.getData(String, String, final long), IdsBean.java:609
++ IdsBean.getData(String, String, final long), IdsBean.java:622
++ IdsBean.getData(String, String, String, ...), IdsBean.java:724
++ IdsBean.getData(String, String, String, ...), IdsBean.java:737
++ DsWriter.run(), thread/DsWriter.java:75
++ DsWriteThenArchiver.run(), thread/DsWriteThenArchiver.java:81
+
+* mainStorage.getPath(String, String, String)
+
++ IdsBean.getLink(...), IdsBean.java:838
+
+* mainStorage.put(DsInfo, String, InputStream) 
+
++ IdsBean.put(...), IdsBean.java:1236
+
+* mainStorage.put(InputStream, String)
+
++ DsRestorer.run(), thread/DsRestorer.java:87
+
+* mainStorage.getDatasetsToArchive(long, long)
+
++ Tidier.Action.run(), Tidier.java:64
+
+
+# Local Variables:
+# mode: org
+# End:
