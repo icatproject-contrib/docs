@@ -28,13 +28,16 @@
 The ICAT Data Service (IDS) operates with delayed actions, internal
 states, and multiple threads.  This makes it somewhat difficult to
 understand from mere reading the sources what actions may be performed
-under certain conditions.  A detailed knowlegde of the internal
-processes of IDS may be needed to properly implement a storage plugin
-in a non-trivial setup, in particular the context that each of the
-plugin's methods may be called in.  This text shall provide a
-reference to accommodate this need.  It is however restricted to the
-case that the IDS is configured as a two level storage and the storage
-unit is dataset.  The text is based on IDS server 1.3.0.
+under certain conditions.  The knowledge of the internal processes in
+IDS may be needed to properly implement a storage plugin in a
+non-trivial setup.  In particular, one might need to know the context
+that each of the plugin's methods may be called in.  This text shall
+provide a reference to accommodate this need.  It is however only an
+overview.  In order to keep the representation clear, many details
+have been omitted.  Furthermore it is somewhat biased towards the
+point of view of a storage plugin developer and it is restricted to
+the case that the IDS is configured as a two level storage with the
+storage unit set to dataset.  The text is based on IDS server 1.3.0.
 
 The workflow in the IDS can be sketched as follows: the IDS waits for
 incoming service requests coming from the user.  In some cases, these
@@ -177,7 +180,7 @@ the queue, see Tab.\ \ref{tab:fsm} for the update matrix.
   \end{tabular}
   \caption{Update matrix for queued operations.  Matrix entries are
     the result if a new operation (column) is queued while a previous
-    one (row) is still wating in the queue.}
+    one (row) is still waiting in the queue.}
   \label{tab:fsm}
 \end{table}
 
