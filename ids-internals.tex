@@ -54,7 +54,10 @@ deferred operations is executed in a separate thread.  Section
 \ref{sec:defops} describes what is being done for each of the
 operations.  Besides processing service requests, some maintenance
 task are running regularly in the background.  These tasks are
-described in Section \ref{sec:maintenance}.
+described in Section \ref{sec:maintenance}.  Finally, we provide an
+index of the context that each storage plugin method is called from in
+Section \ref{sec:plugincalls}.
+
 
 \section{Internal states}
 \label{sec:states}
@@ -98,6 +101,7 @@ Queue an \texttt{ARCHIVE} deferred operation for each of the selected
 datasets.
 
 \subsection{\texttt{delete}}
+\label{sec:requests:delete}
 
 If any of the selected datasets is not \texttt{ONLINE}
 (Sec.\ \ref{sec:states}), queue a \texttt{RESTORE} deferred operation
@@ -108,6 +112,7 @@ storage.  Finally queue a \texttt{WRITE} deferred operation for each
 of the selected datasets.
 
 \subsection{\texttt{getData}}
+\label{sec:requests:getdata}
 
 If any of the selected datasets is not \texttt{ONLINE}
 (Sec.\ \ref{sec:states}), queue a \texttt{RESTORE} deferred operation
@@ -117,6 +122,7 @@ Otherwise get the selected datafiles from the main storage and stream
 their content to the client.
 
 \subsection{\texttt{getLink}}
+\label{sec:requests:getlink}
 
 If the dataset related to the selected datafile is not \texttt{ONLINE}
 (Sec.\ \ref{sec:states}), queue a \texttt{RESTORE} deferred operation
@@ -149,6 +155,7 @@ for them.  Store the data selection and other parameter of the request
 and return the prepared id for later referral.
 
 \subsection{\texttt{put}}
+\label{sec:requests:put}
 
 If the dataset referenced in the request is not \texttt{ONLINE}
 (Sec.\ \ref{sec:states}), queue a \texttt{RESTORE} deferred operation
@@ -205,15 +212,18 @@ thread is started to execute each of them.  This section describes
 what these threads do in each case.
 
 \subsection{\texttt{ARCHIVE}}
+\label{sec:defops:archive}
 
 Delete the dataset from the main storage.
 
 \subsection{\texttt{RESTORE}}
+\label{sec:defops:restore}
 
 Get the ZIP file of the dataset from the archive storage, extract the
 datafiles from it, and stores the datafiles in the main storage.
 
 \subsection{\texttt{WRITE}}
+\label{sec:defops:write}
 
 If the dataset directory does not exist in the main storage, delete
 the ZIP file of the dataset from archive storage.
@@ -223,6 +233,7 @@ dataset (according to ICAT) from the main storage and add them to the
 ZIP file.  Store this ZIP file in the archive storage.
 
 \subsection{\texttt{WRITE\_THEN\_ARCHIVE}}
+\label{sec:defops:writethenarchive}
 
 As the name suggests, same as \texttt{WRITE} and then
 \texttt{ARCHIVE}:
@@ -243,19 +254,113 @@ There are some maintenance tasks running in the background
 independently from user actions.
 
 \subsection{\texttt{FileChecker}}
+\label{sec:maintenance:filechecker}
 
 Iterate over all datasets in the ICAT including their datafiles.  For
-each dataset, get the ZIP file from the archive storage, extract the
-datafiles from it, and check that the list of datafiles in the ZIP
-file matches the list of datafiles in the dataset and that length and
-checksum matches for each of the datafiles.
+each dataset, get the ZIP file from the archive storage and inspect it
+to check that the list of datafiles in the ZIP file matches the list
+of datafiles in the dataset and that length and checksum matches for
+each of the datafiles.
 
 \subsection{\texttt{Tidier}}
+\label{sec:maintenance:tidier}
 
 Query the main storage plugin for a list of datasets to remove in
 order to get the overall size of the main storage below the configured
 limit.  Queue an \texttt{ARCHIVE} deferred operation for each of the
 returned datasets.
+
+
+\section{Index of plugin method calls}
+\label{sec:plugincalls}
+
+In this section, we list for each of the storage plugin methods the
+context that it is called from.  Methods not listed here are never
+called in the considered configuration.
+
+\subsection{\texttt{archiveStorage.delete(DsInfo)}}
+
+Called from the \texttt{DsWriter} (Sec.\ \ref{sec:defops:write}) and
+the \texttt{WriteThenArchiver}
+(Sec.\ \ref{sec:defops:writethenarchive}) if the dataset directory
+does not exist in the main storage.
+
+\subsection{\texttt{archiveStorage.get(DsInfo, Path)}}
+
+Called from the \texttt{DsRestorer} (Sec.\ \ref{sec:defops:restore})
+to extract the ZIP file from the archive storage into main storage.
+Called from the \texttt{FileChecker}
+(Sec. \ref{sec:maintenance:filechecker}) to inspect the ZIP file.
+
+\subsection{\texttt{archiveStorage.put(DsInfo, InputStream)}}
+
+Called from the \texttt{DsWriter} (Sec.\ \ref{sec:defops:write}) and
+the \texttt{WriteThenArchiver}
+(Sec.\ \ref{sec:defops:writethenarchive}) to store the ZIP file in the
+archive storage.
+
+\subsection{\texttt{mainStorage.exists(DsInfo)}}
+
+Called from \texttt{IdsBean} while processing various service requests
+(Sec.\ \ref{sec:requests}) to determine the status of a dataset.
+Called from the \texttt{DsWriter} (Sec.\ \ref{sec:defops:write}) and
+the \texttt{WriteThenArchiver}
+(Sec.\ \ref{sec:defops:writethenarchive}) to check if the dataset
+directory exists.
+
+\subsection{\texttt{mainStorage.exists(String)}}
+
+Called from \texttt{IdsBean} while processing a \texttt{delete}
+request (Sec.\ \ref{sec:requests:delete}) to check if a selected
+datafile exists in the main storage before deleting it.
+
+\subsection{\texttt{mainStorage.delete(DsInfo)}}
+
+Called from the \texttt{DsArchiver} (Sec.\ \ref{sec:defops:archive})
+and the \texttt{WriteThenArchiver}
+(Sec.\ \ref{sec:defops:writethenarchive}) to delete the dataset from
+the main storage.
+
+\subsection{\texttt{mainStorage.delete(String, String, String)}}
+
+Called from \texttt{IdsBean} while processing a \texttt{delete}
+request (Sec.\ \ref{sec:requests:delete}) to delete the selected
+datafiles from the main storage.  Called from \texttt{IdsBean} while
+processing a \texttt{put} request (Sec.\ \ref{sec:requests:put}) to
+delete the uploaded file from the main storage again in the case that
+an error occurred while creating the correspoding datafile object in
+ICAT.
+
+\subsection{\texttt{mainStorage.get(String, String, String)}}
+
+Called from \texttt{IdsBean} while processing a \texttt{getData}
+request (Sec.\ \ref{sec:requests:getdata}) to get the selected
+datafiles from the main storage.  Called from the \texttt{DsWriter}
+(Sec.\ \ref{sec:defops:write}) and the \texttt{Write\-Then\-Archiver}
+(Sec.\ \ref{sec:defops:writethenarchive}) to get the datafiles and add
+them to the ZIP archive.
+
+\subsection{\texttt{mainStorage.getPath(String, String, String)}}
+
+Called from \texttt{IdsBean} while processing a \texttt{getLink}
+request (Sec.\ \ref{sec:requests:getlink}) to get the path of the file
+from main storage.
+
+\subsection{\texttt{mainStorage.put(DsInfo, String, InputStream)}}
+
+Called from \texttt{IdsBean} while processing a \texttt{put} request
+(Sec.\ \ref{sec:requests:put}) to store the uploaded file in the main
+storage.
+
+\subsection{\texttt{mainStorage.put(InputStream, String)}}
+
+Called from the \texttt{DsRestorer} (Sec.\ \ref{sec:defops:restore})
+to store the file extracted from the ZIP into main storage.
+
+\subsection{\texttt{mainStorage.getDatasetsToArchive(long, long)}}
+
+Called from the \texttt{Tidier} (Sec. \ref{sec:maintenance:tidier}) to
+query the main storage plugin for a list of datasets to remove.
 
 
 \end{document}
