@@ -37,20 +37,24 @@ overview.  In order to keep the representation clear, many details
 have been omitted.  Furthermore it is somewhat biased towards the
 point of view of a storage plugin developer and it is restricted to
 the case that the IDS is configured as a two level storage with the
-storage unit set to dataset.  The text is based on IDS server 1.3.0.
+storage unit set to dataset.  The text is based on IDS server 1.3.1.
 
 The workflow in the IDS can be sketched as follows: the IDS waits for
 incoming service requests coming from the user.  In some cases, these
 requests may be completed immediately.  In other cases, a deferred
 operation that will be processed in the background later is queued.
-Section \ref{sec:requests} lists the service request and what is done
-in each case.  The various operations that are queued for any given
-dataset are kept track of in a finite state machine.  This is detailed
-in Section \ref{sec:fsm}.  When processing the queue, each of the
+
+Before describing this workflow in detail, we give the definition of
+the status of a dataset in Section \ref{sec:states}.  Section
+\ref{sec:requests} lists the service request and what is done in each
+case.  The various operations that are queued for any given dataset
+are kept track of in a finite state machine.  This is detailed in
+Section \ref{sec:fsm}.  When processing the queue, each of the
 deferred operations is executed in a separate thread.  Section
 \ref{sec:defops} describes what is being done for each of the
-operations.
-
+operations.  Besides processing service requests, some maintenance
+task are running regularly in the background.  These tasks are
+described in Section \ref{sec:maintenance}.
 
 \section{Internal states}
 \label{sec:states}
