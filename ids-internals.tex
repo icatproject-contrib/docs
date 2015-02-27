@@ -281,7 +281,7 @@ called in the considered configuration.
 \subsection{\texttt{archiveStorage.delete(DsInfo)}}
 
 Called from the \texttt{DsWriter} (Sec.\ \ref{sec:defops:write}) and
-the \texttt{WriteThenArchiver}
+the \texttt{DsWriteThenArchiver}
 (Sec.\ \ref{sec:defops:writethenarchive}) if the dataset directory
 does not exist in the main storage.
 
@@ -295,7 +295,7 @@ Called from the \texttt{FileChecker}
 \subsection{\texttt{archiveStorage.put(DsInfo, InputStream)}}
 
 Called from the \texttt{DsWriter} (Sec.\ \ref{sec:defops:write}) and
-the \texttt{WriteThenArchiver}
+the \texttt{DsWriteThenArchiver}
 (Sec.\ \ref{sec:defops:writethenarchive}) to store the ZIP file in the
 archive storage.
 
@@ -304,7 +304,7 @@ archive storage.
 Called from \texttt{IdsBean} while processing various service requests
 (Sec.\ \ref{sec:requests}) to determine the status of a dataset.
 Called from the \texttt{DsWriter} (Sec.\ \ref{sec:defops:write}) and
-the \texttt{WriteThenArchiver}
+the \texttt{DsWriteThenArchiver}
 (Sec.\ \ref{sec:defops:writethenarchive}) to check if the dataset
 directory exists.
 
@@ -317,7 +317,7 @@ datafile exists in the main storage before deleting it.
 \subsection{\texttt{mainStorage.delete(DsInfo)}}
 
 Called from the \texttt{DsArchiver} (Sec.\ \ref{sec:defops:archive})
-and the \texttt{WriteThenArchiver}
+and the \texttt{DsWriteThenArchiver}
 (Sec.\ \ref{sec:defops:writethenarchive}) to delete the dataset from
 the main storage.
 
@@ -336,7 +336,7 @@ ICAT.
 Called from \texttt{IdsBean} while processing a \texttt{getData}
 request (Sec.\ \ref{sec:requests:getdata}) to get the selected
 datafiles from the main storage.  Called from the \texttt{DsWriter}
-(Sec.\ \ref{sec:defops:write}) and the \texttt{Write\-Then\-Archiver}
+(Sec.\ \ref{sec:defops:write}) and the \texttt{DsWrite\-Then\-Archiver}
 (Sec.\ \ref{sec:defops:writethenarchive}) to get the datafiles and add
 them to the ZIP archive.
 
