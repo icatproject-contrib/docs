@@ -204,9 +204,9 @@ same dataset pushes this delay further.
 \section{Deferred operations}
 \label{sec:defops}
 
-When the queue of deferred operations is processed, starts a new
-thread is started to execute each of them.  This section describes
-what these threads do in each case.
+When the queue of deferred operations is processed, a new thread is
+started to execute each of them.  This section describes what these
+threads do in each case.
 
 \subsection{\texttt{ARCHIVE}}
 \label{sec:defops:archive}
@@ -217,7 +217,7 @@ Delete the dataset from the main storage.
 \label{sec:defops:restore}
 
 Get the ZIP file of the dataset from the archive storage, extract the
-datafiles from it, and stores the datafiles in the main storage.
+datafiles from it, and store the datafiles in the main storage.
 
 \subsection{\texttt{WRITE}}
 \label{sec:defops:write}
