@@ -1,0 +1,87 @@
+List of IDS plugin calls
+========================
+
+List of all methods in the IDS storage plugin and the context these
+methods are called by ids.server.  This corresponds to Section 7 from
+the "Overview if IDS internals" document, but is updated for the
+current ids.server version (1.8.0) and also covers the case of
+StorageUnit set to datafile.
+
+* mainStorage.delete(DsInfo)
+
++ Called from the DsArchiver
+
+* mainStorage.delete(String, String, String)
+
++ Called from the DfArchiver
++ Called from the delete web service request if not ReadOnly
++ Called from the put web service request if not ReadOnly
+
+* mainStorage.exists(DsInfo)
+
++ Called from the DsWriter
++ Called from the DsRestorer
++ Called from the various web service requests if StorageUnit dataset
+
+* mainStorage.exists(String)
+
++ Called from the DfRestorer
++ Called from the delete web service request if not ReadOnly
++ Called from the various web service requests if StorageUnit datafile
+
+* mainStorage.get(String, String, String)
+
++ Called from the FileChecker if not twoLevel
++ Called from the DsWriter
++ Called from the DfWriter
++ Called from the getData web service request
+
+* mainStorage.getDatafilesToArchive(long, long)
+
++ Called from the Tidier if twoLevel and StorageUnit datafile
+
+* mainStorage.getDatasetsToArchive(long, long)
+
++ Called from the Tidier if twoLevel and StorageUnit dataset
+
+* mainStorage.getPath(String, String, String)
+
++ Called from the getLink web service request if linkEnabled
+
+* mainStorage.put(DsInfo, String, InputStream)
+
++ Called from the put web service request if not ReadOnly
+
+* mainStorage.put(InputStream, String)
+
++ Called from the DsRestorer
+
+* archiveStorage.delete(DsInfo)
+
++ Called from the DsWriter
+
+* archiveStorage.delete(String)
+
++ Called from the DfDeleter
+
+* archiveStorage.get(DsInfo, Path)
+
++ Called from the DsRestorer
++ Called from the FileChecker if StorageUnit dataset
+
+* archiveStorage.put(DsInfo, InputStream)
+
++ Called from the DsWriter
+
+* archiveStorage.put(InputStream, String)
+
++ Called from the DfWriter
+
+* archiveStorage.restore(MainStorageInterface, List<DfInfo>)
+
++ Called from the DfRestorer
+
+
+# Local Variables:
+# mode: org
+# End:
