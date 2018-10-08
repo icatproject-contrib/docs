@@ -29,37 +29,26 @@ BIBFILES =
 # ids-internals: Shortcut for ids-internals.pdf
 ids-internals: ids-internals.pdf
 
-# epsimg: EPS files used in figures
-epsimg:
-	$(MAKE) -C ../Abbildungen epsimg
-
-# pdfimg: PDF files used in figures
-pdfimg:
-	$(MAKE) -C ../Abbildungen pdfimg
-
 # clean: Remove temporary files
 clean:
-	$(MAKE) -C ../Abbildungen clean
 	$(RM) $(LOGFILES)
 
 # clean: Remove all intermediate files
 realclean:
-	$(MAKE) -C ../Abbildungen realclean
 	$(RM) $(AUXFILES) .revision $(LOGFILES)
 
 # clean: Remove all automatically created files
 distclean:
-	$(MAKE) -C ../Abbildungen distclean
 	$(RM) $(RESFILES) $(AUXFILES) .revision $(LOGFILES)
 
 # revfile: Create a file containing the svn version of the curren working dir
 revfile:
-	svnversion .. > .revision
+	git describe --always --dirty > .revision
 
 # Tell make, that the main targets are not actually files, that should
 # considered to be build:
 .PHONY: all ids-internals \
-	final epsimg pdfimg clean realclean distclean revfile
+	final clean realclean distclean revfile
 
 
 #=========================================================================
