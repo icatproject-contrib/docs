@@ -7,45 +7,55 @@
 \title{Overview of IDS Internals}
 \author{Rolf Krahl}
 
+% Add a revision hint as a unnumbered footnote
+\newcommand{\revhint}{%
+  \begingroup%
+  \let\thefootnote\relax%
+  \footnote{Revision: \input{.revision}}%
+  \addtocounter{footnote}{-1}%
+  \endgroup%
+}
+
 \begin{document}
 
 \maketitle
 
 \section{Introduction}
 
-The ICAT Data Service (IDS) operates with delayed actions, internal 
-states, and multiple threads. This makes it somewhat difficult to
+\revhint{}%
+The ICAT Data Service (IDS) operates with delayed actions, internal
+states, and multiple threads.  This makes it somewhat difficult to
 understand from mere reading the sources what actions may be performed
-under certain conditions. The knowledge of the internal processes in
+under certain conditions.  The knowledge of the internal processes in
 IDS may be needed to properly implement a storage plugin in a
-non-trivial setup. In particular, one might need to know the context
-that each of the plugin's methods may be called in. This text shall
-provide a reference to accommodate this need. It is however only an
-overview. In order to keep the representation clear, many details
-have been omitted. Furthermore it is somewhat biased towards the
+non-trivial setup.  In particular, one might need to know the context
+that each of the plugin's methods may be called in.  This text shall
+provide a reference to accommodate this need.  It is however only an
+overview.  In order to keep the representation clear, many details
+have been omitted.  Furthermore it is somewhat biased towards the
 point of view of a storage plugin developer and it is restricted to
-the case that the IDS is configured as a two level storage. The text
+the case that the IDS is configured as a two level storage.  The text
 is based on IDS server 1.9.0.
 
 When working with data objects in the storage, IDS can be configured
 to use either one of two different storage units: datasets or
-datafiles. This text tries to describe the behavior in both cases.
+datafiles.  This text tries to describe the behavior in both cases.
 
 The workflow in the IDS can be sketched as follows: the IDS waits for
-incoming service requests coming from the user. In some cases, these
-requests may be completed immediately. In other cases, a deferred
+incoming service requests coming from the user.  In some cases, these
+requests may be completed immediately.  In other cases, a deferred
 operation that will be processed in the background later is queued.
 
 Before describing this workflow in detail, we give the definition of
-the status of a data object in Section \ref{sec:states}. Section
+the status of a data object in Section \ref{sec:states}.  Section
 \ref{sec:defops} describes the different deferred operations and what
-is being done for each of them. The various operations that are
+is being done for each of them.  The various operations that are
 queued for any given data object are kept track of in a finite state
-machine. This is detailed in Section \ref{sec:fsm}. Section
-\ref{sec:requests} lists the available service request. Besides
+machine.  This is detailed in Section \ref{sec:fsm}.  Section
+\ref{sec:requests} lists the available service request.  Besides
 processing the service requests, there are some maintenance tasks
-running regularly in the background. These tasks are described in
-Section \ref{sec:maintenance}. Finally, we provide an index of the
+running regularly in the background.  These tasks are described in
+Section \ref{sec:maintenance}.  Finally, we provide an index of the
 context that each storage plugin method is called from in Section
 \ref{sec:plugincalls}.
 
@@ -54,16 +64,16 @@ context that each storage plugin method is called from in Section
 \label{sec:states}
 
 The processing of a data object is influenced by its internal state
-and what operations have been queued for them. We say that an
+and what operations have been queued for them.  We say that an
 operation is \emph{in process} on a data object if this operation is
 either in the queue or if it is currently being executed for that
 data object.
 
 The status of a data object may either be \texttt{ONLINE},
-\texttt{ARCHIVED}, or \texttt{RESTORING}. In this context,
+\texttt{ARCHIVED}, or \texttt{RESTORING}.  In this context,
 \texttt{ARCHIVED} refers to files being available only in the archive
 storage, while \texttt{ONLINE} refers to the files being available in
-the main storage as well. The \texttt{RESTORING} state describes the
+the main storage as well.  The \texttt{RESTORING} state describes the
 process of making files from the archive storage available in the
 main storage.
 
@@ -86,13 +96,13 @@ In all other cases, the status is \texttt{ONLINE}.
 \label{sec:defops}
 
 When the queue of deferred operations is processed, a new thread is
-started to execute each of them. This section describes what these
+started to execute each of them.  This section describes what these
 threads do in each case.
 
 \subsection{\texttt{ARCHIVE}}
 \label{sec:defops:archive}
 
-Delete the data object from the main storage. This leaves only the
+Delete the data object from the main storage.  This leaves only the
 files in the archive storage.
 
 \subsection{\texttt{RESTORE}}
@@ -112,7 +122,7 @@ dataset directory in the main storage.
 \label{sec:defops:write}
 
 If the data object files do not exist in the main storage, delete
-the data object from the archive storage. Otherwise, overwrite the
+the data object from the archive storage.  Otherwise, overwrite the
 file in the archive storage with the latest version:
 \begin{itemize}[noitemsep,topsep=0pt]
 \item For a datafile, get the file from the main storage and copy
@@ -134,11 +144,11 @@ Delete the datafile from the archive storage.
 \label{sec:fsm}
 
 The finite state machine manages the queue of deferred operations for
-the data objects. For each data object, only one operation can be
-queued at a time. Thus, the finite state machine sometimes uses the
+the data objects.  For each data object, only one operation can be
+queued at a time.  Thus, the finite state machine sometimes uses the
 \texttt{WRITE\_THEN\_ARCHIVE} state, to remember to queue up an
 \texttt{ARCHIVE} deferred operation after the \texttt{WRITE} deferred
-operation is done. The queued operation of a data object may be
+operation is done.  The queued operation of a data object may be
 changed if another operation is queued for it while the previous one
 is still waiting in the queue, see Tab.\ \ref{tab:fsm} for the update
 matrix.
@@ -164,7 +174,7 @@ matrix.
   \texttt{WRITE}                & \texttt{WRITE\_THEN\_ARCHIVE} & \texttt{WRITE} & \texttt{WRITE} \\
   \texttt{WRITE\_THEN\_ARCHIVE} & \texttt{WRITE\_THEN\_ARCHIVE} & \texttt{WRITE} & \texttt{WRITE\_THEN\_ARCHIVE} \\
  \end{tabular}
- \caption{Update matrix for queued operations. Matrix entries are
+ \caption{Update matrix for queued operations.  Matrix entries are
   the result if a new operation (column) is queued while a previous
   one (row) is still waiting in the queue.}
  \label{tab:fsm}
@@ -174,7 +184,7 @@ The queue is processed regularly by a timer task that starts a new
 thread to execute each of the pending operations.
 
 \texttt{WRITE} operations for datasets are processed with a delay
-that is fixed when the operation is queued. Any subsequent
+that is fixed when the operation is queued.  Any subsequent
 \texttt{WRITE} operation queued for the same dataset pushes this
 delay further.
 
@@ -183,23 +193,23 @@ delay further.
 \label{sec:requests}
 
 In this section, we consider each IDS request and describe in detail
-what is done in each case. We consider only requests that interact in
-any way with the storage plugin. The requests \texttt{getApiVersion},
+what is done in each case.  We consider only requests that interact in
+any way with the storage plugin.  The requests \texttt{getApiVersion},
 \texttt{getIcatUrl}, \texttt{getServiceStatus}, \texttt{getSize},
 \texttt{isReadOnly}, \texttt{isTwoLevel}, \texttt{ping}, and
 \texttt{version} are thus skipped.
 
 Several service calls that deal with a selection of data objects in
 the storage expect lists of datafile, dataset, and investigation ids
-as parameter. As most internal processing is done at the level of the
+as parameter.  As most internal processing is done at the level of the
 configured storage unit, it only matters which datafiles or datasets,
-respectively, are concerned. In these cases, we use the terms
+respectively, are concerned.  In these cases, we use the terms
 \emph{selected datafiles} and \emph{selected datasets} regardless
 whether the data objects have actually been selected by datafile,
 dataset, or investigation id.
 
 Another way to select data objects is to specify a
-\emph{prepared id}. This can be done only after making a
+\emph{prepared id}.  This can be done only after making a
 \texttt{prepareData} service call
 (Sec.\ \ref{sec:requests:prepareData}), and it automatically
 selects all data objects that where previously prepared.
@@ -217,7 +227,7 @@ If any of the selected data objects is not \texttt{ONLINE}
 for them and throw a \texttt{DataNotOnlineException}.
 
 Otherwise delete the selected data objects from ICAT and from the main
-storage. Finally queue a \texttt{WRITE} deferred operation for each
+storage.  Finally queue a \texttt{WRITE} deferred operation for each
 of the selected data objects in order to get them deleted from the
 archive storage as well.
 
@@ -250,7 +260,7 @@ the file.
 \subsection{\texttt{getStatus}}
 
 Return \texttt{ONLINE} if all selected data objects are
-\texttt{ONLINE} (Sec.\ \ref{sec:states}). Else, if at least one data
+\texttt{ONLINE} (Sec.\ \ref{sec:states}).  Else, if at least one data
 object is archived, return \texttt{ARCHIVED}, otherwise return
 \texttt{RESTORING}.
 
@@ -268,7 +278,7 @@ Otherwise return \texttt{true}.
 
 If any of the selected data objects is not \texttt{ONLINE}
 (Sec.\ \ref{sec:states}), queue a \texttt{RESTORE} deferred operation
-for them. Store the data selection and other parameter of the request
+for them.  Store the data selection and other parameter of the request
 and return the \emph{prepared id} for later referral.
 
 \subsection{\texttt{put}}
@@ -310,7 +320,7 @@ independently from user actions.
 
 The File Checker is only available for the storage unit dataset.
 
-Iterate over all datasets in the ICAT including their datafiles. For
+Iterate over all datasets in the ICAT including their datafiles.  For
 each dataset, get the ZIP file from the archive storage and inspect it
 to check that the list of datafiles in the ZIP file matches the list
 of datafiles in ICAT and that length and checksum matches for each of
@@ -321,7 +331,7 @@ the datafiles.
 
 Query the main storage plugin for a list of data objects to remove in
 order to get the overall size of the main storage below the configured
-limit. Queue an \texttt{ARCHIVE} deferred operation for each of the
+limit.  Queue an \texttt{ARCHIVE} deferred operation for each of the
 returned data objects.
 
 
@@ -329,7 +339,7 @@ returned data objects.
 \label{sec:plugincalls}
 
 In this section, we list for each of the storage plugin methods the
-context that it is called from. Methods not listed here are never
+context that it is called from.  Methods not listed here are never
 called in the considered configuration.
 
 \subsection{\texttt{archiveStorage.delete(DsInfo)}}
