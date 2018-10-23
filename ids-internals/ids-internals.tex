@@ -35,7 +35,7 @@ overview.  In order to keep the representation clear, many details
 have been omitted.  Furthermore it is somewhat biased towards the
 point of view of a storage plugin developer and it is restricted to
 the case that the IDS is configured as a two level storage.  The text
-is based on IDS server 1.9.0.
+is based on IDS server 1.10.0 and IDS plugin 1.5.0.
 
 When working with data objects in the storage, IDS can be configured
 to use either one of two different storage units: datasets or
@@ -341,8 +341,7 @@ returned data objects.
 \label{sec:plugincalls}
 
 In this section, we list for each of the storage plugin methods the
-context that it is called from.  Methods not listed here are never
-called in the considered configuration.
+context that it is called from.
 
 \subsection{\texttt{archiveStorage.delete(DsInfo)}}
 
@@ -447,6 +446,12 @@ storage.
 
 Called from the \texttt{DsRestorer} (Sec.~\ref{sec:defops:restore})
 to store the files extracted from a ZIP archive in the main storage.
+
+
+\subsection{\texttt{mainStorage.lock(DsInfo, boolean)}}
+
+Called from the \texttt{LockManager} to acquire a lock on the file
+system level for a data object in the main storage.
 
 
 \end{document}
