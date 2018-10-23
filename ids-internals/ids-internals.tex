@@ -121,15 +121,16 @@ dataset directory in the main storage.
 \subsection{\texttt{WRITE}}
 \label{sec:defops:write}
 
-If the data object files do not exist in the main storage, delete
-the data object from the archive storage.  Otherwise, overwrite the
-file in the archive storage with the latest version:
+Overwrite the file in the archive storage with the latest version
+from the main storage:
 \begin{itemize}[noitemsep,topsep=0pt]
-\item For a datafile, get the file from the main storage and copy
-it to the archive storage.
-\item For a dataset, get all datafiles that belong to the dataset
-(according to ICAT) from the main storage, package them as a ZIP
-file, and store it in the archive storage.
+\item For a datafile, get the file from the main storage and copy it
+to the archive storage.
+\item For a dataset, if the dataset directory does not exist in the
+main storage, delete the dataset from the archive storage. Otherwise,
+get all datafiles that belong to the dataset (according to ICAT) from
+the main storage, package them as a ZIP file, and store it in the
+archive storage.
 \end{itemize}
 
 \subsection{\texttt{DELETE}}
@@ -222,13 +223,15 @@ data objects.
 \subsection{\texttt{delete}}
 \label{sec:requests:delete}
 
-If any of the selected data objects is not \texttt{ONLINE}
-(Sec.\ \ref{sec:states}), queue a \texttt{RESTORE} deferred operation
-for them and throw a \texttt{DataNotOnlineException}.
+If the storage unit is set to dataset and any of the selected
+datasets is not \texttt{ONLINE} (Sec.\ \ref{sec:states}), queue a
+\texttt{RESTORE} deferred operation for them and throw a
+\texttt{DataNotOnlineException}.
 
 Otherwise delete the selected data objects from ICAT and from the main
-storage.  Finally queue a \texttt{WRITE} deferred operation for each
-of the selected data objects in order to get them deleted from the
+storage.  Finally queue a \texttt{DELETE} deferred operation for each
+of the selected datafiles and a \texttt{WRITE} deferred operation for
+each of the selected datasets in order to get them deleted from the
 archive storage as well.
 
 \subsection{\texttt{getData}}
@@ -284,14 +287,13 @@ and return the \emph{prepared id} for later referral.
 \subsection{\texttt{put}}
 \label{sec:requests:put}
 
-If the storage unit is set to dataset and the dataset referenced in
-the request is not \texttt{ONLINE} (Sec.\ \ref{sec:states}), queue a
-\texttt{RESTORE} deferred operation for it and throw a
-\texttt{DataNotOnlineException}.
+If the storage unit is set to dataset and the referenced dataset is
+not \texttt{ONLINE} (Sec.\ \ref{sec:states}), queue a \texttt{RESTORE}
+deferred operation for it and throw a \texttt{DataNotOnlineException}.
 
 Otherwise store the uploaded datafile in the main storage, create the
 datafile object in ICAT, and queue a \texttt{WRITE} deferred operation
-for the referenced data object.
+for the respective data object.
 
 \subsection{\texttt{reset}}
 
