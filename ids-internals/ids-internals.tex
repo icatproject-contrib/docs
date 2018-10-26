@@ -229,10 +229,10 @@ datasets is not \texttt{ONLINE} (Sec.~\ref{sec:states}), queue a
 \texttt{DataNotOnlineException}.
 
 Otherwise delete the selected data objects from ICAT and from the main
-storage.  Finally queue a \texttt{DELETE} deferred operation for each
-of the selected datafiles and a \texttt{WRITE} deferred operation for
-each of the selected datasets in order to get them deleted from the
-archive storage as well.
+storage.  Finally, queue a \texttt{DELETE} deferred operation for each
+of the selected datafiles, or a \texttt{WRITE} deferred operation for
+each of the selected datasets, depending on the storage unit, in order
+to get the files deleted from the archive storage as well.
 
 \subsection{\texttt{getData}}
 \label{sec:requests:getdata}
