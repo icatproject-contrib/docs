@@ -418,7 +418,9 @@ get the datafiles and add them to the ZIP archive.
 Called from the \texttt{DfWriter} (Sec.~\ref{sec:defops:write}) to
 get the datafile and copy it to the archive storage.
 
-Called from \texttt{IdsBean} while writing data into a ZIP file.
+Called from \texttt{IdsBean} while preparing a ZIP file to be streamed
+to the client after a \texttt{getData} request
+(Sec.~\ref{sec:requests:getdata}).
 
 \subsection{\texttt{mainStorage.getDatafilesToArchive(long, long)}}
 
