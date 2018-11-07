@@ -87,8 +87,10 @@ The same is not possible for errors that happen \textit{during} a deferred opera
 
     \raggedright \texttt{DfRestorer} &
     \raggedright Datafile is copied from archive storage to main storage during \texttt{restore} deferred operation. &
-    \raggedright Exception is caught and written to log. Dataset is \textit{not} marked as \texttt{failure} in Finite State Machine. No possibility for data loss, but \textbf{should record failure in Finite State Machine.}
+    \raggedright Exception is caught and written to log. Dataset is not marked as \texttt{failure} in Finite State Machine. No possibility for data loss, but \textbf{should record failure in Finite State Machine.}
     \tabularnewline
+
+    \pagebreak
 
     \multicolumn{3}{p{\textwidth}}{
       \subsection{\texttt{mainStorage.delete(DsInfo)}}
@@ -113,24 +115,24 @@ The same is not possible for errors that happen \textit{during} a deferred opera
     \tabularnewline[4mm]
     \raggedright \texttt{IdsBean} \texttt{put} request &
     \raggedright Datafile is deleted from main storage after a \texttt{put} service request when registering the datafile object in ICAT failed. &
-    \raggedright IOException is caught and written to log. Misplaced datafile does \textit{not} get deleted. \texttt{InternalException} is thrown to return HTTP status code 500. \textbf{Should delete the datafile, and could catch other Exceptions as well.}
+    \raggedright IOException is caught and written to log. Misplaced datafile does not get deleted. \texttt{InternalException} is thrown to return HTTP status code 500. \textbf{Should delete the datafile, and could catch other Exceptions as well.}
     \tabularnewline
 
     \multicolumn{3}{p{\textwidth}}{
       \subsection{\texttt{mainStorage.exists(DsInfo)}}
     } \\
 
+    \raggedright \texttt{IdsBean} \texttt{restoreIfOffline} method &
+    \raggedright Data object is checked for existence after various service requests. &
+    \raggedright IOException is not caught and left for calling method to deal with, declaring "throws IOException". \textbf{No changes needed.}
+    \tabularnewline[4mm]
     \raggedright \texttt{DsWriter} &
     \raggedright Dataset is checked for existence during \texttt{write} deferred operation. &
     \raggedright Exception is caught and written to log. Marker file of dataset does not get deleted which prevents data loss during a possible \texttt{archive} deferred operation. \textbf{No changes needed.}
     \tabularnewline[4mm]
     \raggedright \texttt{DsRestorer} &
     \raggedright Dataset is checked for existence during \texttt{restore} deferred operation. &
-    \raggedright IOException is caught and written to log. DfRestorer is optimistic and attempts the restoration of the dataset. \textbf{No changes needed.}
-    \tabularnewline[4mm]
-    \raggedright \texttt{IdsBean} \texttt{restoreIfOffline} method &
-    \raggedright Data object is checked for existence after various service requests. &
-    \raggedright IOException is not caught and left for calling method to deal with. \textbf{No changes needed.}
+    \raggedright IOException is caught and written to log. DfRestorer is optimistic and attempts restoration of the dataset. \textbf{Could simplify calling code by omitting "throws IOException" declaration from the plugin method.}
     \tabularnewline[4mm]
     \raggedright \texttt{IdsBean} \texttt{delete} request &
     \raggedright Data object is checked for existence after \texttt{delete} service request. &
@@ -151,17 +153,13 @@ The same is not possible for errors that happen \textit{during} a deferred opera
 
     \raggedright \texttt{DfRestorer} &
     \raggedright Datafile is checked for existence during \texttt{restore} deferred operation. &
-    \raggedright IOException is caught and written to log. \texttt{DfRestorer} is optimistic and attempts the restoration of the datafile. \textbf{No changes needed.}
+    \raggedright IOException is caught and written to log. \texttt{DfRestorer} is optimistic and attempts restoration of the datafile. \textbf{Could simplify calling code by omitting "throws IOException" declaration from the plugin method.}
     \tabularnewline
 
     \multicolumn{3}{p{\textwidth}}{
       \subsection{\texttt{mainStorage.get(String, String, String)}}
     } \\
 
-    \raggedright \texttt{IdsBean} \texttt{getData} request &
-    \raggedright Content of datafile or dataset is read from main storage and sent to the client after a \texttt{getData} service request. &
-    \raggedright IOException is caught and written to log. JSON response with error message is sent to the client. \textbf{Could catch other Exceptions as well.}
-    \tabularnewline[4mm]
     \raggedright \texttt{DsWriter} &
     \raggedright Dataset content is read from main storage during \texttt{write} deferred operation. &
     \raggedright Exception is caught and written to log. \textbf{No changes needed.}
@@ -169,6 +167,10 @@ The same is not possible for errors that happen \textit{during} a deferred opera
     \raggedright \texttt{DfWriter} &
     \raggedright Datafile content is read from main storage during \texttt{write} deferred operation. &
     \raggedright Exception is caught and written to log. \textbf{No changes needed.}
+    \tabularnewline[4mm]
+    \raggedright \texttt{IdsBean} \texttt{getData} request &
+    \raggedright Content of data object is read from main storage and sent to the client after a \texttt{getData} service request. &
+    \raggedright IOException is caught and written to log. Client receives error. \textbf{Could catch other Exceptions as well.}
     \tabularnewline
 
     \multicolumn{3}{p{\textwidth}}{
@@ -177,7 +179,7 @@ The same is not possible for errors that happen \textit{during} a deferred opera
 
     \texttt{Tidier} &
     \raggedright \texttt{Tidier} asks main storage for datafiles to archive, in order to free up space. &
-    \raggedright Throwable is caught and written to log. \texttt{Tidier} continues its work. \textbf{No changes needed.}
+    \raggedright Throwable is caught and written to log. \textbf{No changes needed.}
     \tabularnewline
 
     \multicolumn{3}{p{\textwidth}}{
@@ -186,7 +188,7 @@ The same is not possible for errors that happen \textit{during} a deferred opera
 
     \texttt{Tidier} &
     \raggedright \texttt{Tidier} asks main storage for datasets to archive, in order to free up space. &
-    \raggedright Throwable is caught and written to log. \texttt{Tidier} continues its work. \textbf{No changes needed.}
+    \raggedright Throwable is caught and written to log. \textbf{No changes needed.}
     \tabularnewline
 
     \multicolumn{3}{p{\textwidth}}{
@@ -226,6 +228,8 @@ The same is not possible for errors that happen \textit{during} a deferred opera
     \tabularnewline
 
 \end{longtable}
+
+\pagebreak
 
 
 \section{Conclusion}
