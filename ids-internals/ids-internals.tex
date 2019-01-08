@@ -156,28 +156,30 @@ matrix.
 
 \begin{table}
  \begin{tabular}{l|llll}
-  for datafiles                 & \texttt{ARCHIVE} & \texttt{RESTORE} & \texttt{WRITE} & \texttt{DELETE} \\
+  for datafiles    & \texttt{ARCHIVE} & \texttt{RESTORE} & \texttt{WRITE}   & \texttt{DELETE} \\
   \hline
-  none                          & \texttt{ARCHIVE} & \texttt{RESTORE} & \texttt{WRITE} & \texttt{DELETE} \\
-  \texttt{ARCHIVE}              & \texttt{ARCHIVE} & none & \texttt{ARCHIVE} & \texttt{DELETE} \\
-  \texttt{RESTORE}              & \texttt{ARCHIVE} & \texttt{RESTORE} & \texttt{RESTORE} & \texttt{DELETE} \\
-  \texttt{WRITE}                & \texttt{WRITE\_THEN\_ARCHIVE} & \texttt{WRITE} & \texttt{WRITE} & none \\
-  \texttt{DELETE}               & \texttt{DELETE} & \texttt{DELETE} & \texttt{DELETE} & \texttt{DELETE} \\
-  \texttt{WRITE\_THEN\_ARCHIVE} & \texttt{WRITE\_THEN\_ARCHIVE} & \texttt{WRITE} & \texttt{WRITE\_THEN\_ARCHIVE} & none \\
+  none             & \texttt{ARCHIVE} & \texttt{RESTORE} & \texttt{WRITE}   & \texttt{DELETE} \\
+  \texttt{ARCHIVE} & \texttt{ARCHIVE} & none             & \texttt{ARCHIVE} & \texttt{DELETE} \\
+  \texttt{RESTORE} & \texttt{ARCHIVE} & \texttt{RESTORE} & \texttt{RESTORE} & \texttt{DELETE} \\
+  \texttt{WRITE}   & \texttt{WTA}     & \texttt{WRITE}   & \texttt{WRITE}   & none \\
+  \texttt{DELETE}  & \texttt{DELETE}  & \texttt{DELETE}  & \texttt{DELETE}  & \texttt{DELETE} \\
+  \texttt{WTA}     & \texttt{WTA}     & \texttt{WRITE}   & \texttt{WTA}     & none \\
  \end{tabular}
  \bigbreak
  \begin{tabular}{l|lll}
-  for datasets                  & \texttt{ARCHIVE} & \texttt{RESTORE} & \texttt{WRITE} \\
+  for datasets     & \texttt{ARCHIVE} & \texttt{RESTORE} & \texttt{WRITE} \\
   \hline
-  none                          & \texttt{ARCHIVE} & \texttt{RESTORE} & \texttt{WRITE} \\
-  \texttt{ARCHIVE}              & \texttt{ARCHIVE} & \texttt{RESTORE} & \texttt{WRITE\_THEN\_ARCHIVE} \\
-  \texttt{RESTORE}              & \texttt{ARCHIVE} & \texttt{RESTORE} & \texttt{WRITE} \\
-  \texttt{WRITE}                & \texttt{WRITE\_THEN\_ARCHIVE} & \texttt{WRITE} & \texttt{WRITE} \\
-  \texttt{WRITE\_THEN\_ARCHIVE} & \texttt{WRITE\_THEN\_ARCHIVE} & \texttt{WRITE} & \texttt{WRITE\_THEN\_ARCHIVE} \\
+  none             & \texttt{ARCHIVE} & \texttt{RESTORE} & \texttt{WRITE} \\
+  \texttt{ARCHIVE} & \texttt{ARCHIVE} & \texttt{RESTORE} & \texttt{WTA} \\
+  \texttt{RESTORE} & \texttt{ARCHIVE} & \texttt{RESTORE} & \texttt{WRITE} \\
+  \texttt{WRITE}   & \texttt{WTA}     & \texttt{WRITE}   & \texttt{WRITE} \\
+  \texttt{WTA}     & \texttt{WTA}     & \texttt{WRITE}   & \texttt{WTA} \\
  \end{tabular}
- \caption{Update matrix for queued operations.  Matrix entries are
-  the result if a new operation (column) is queued while a previous
-  one (row) is still waiting in the queue.}
+ \caption{Update matrix for queued operations.  Matrix entries are the
+   result if a new operation (column) is queued while a previous one
+   (row) is still waiting in the queue.  For the sake of clarity in
+   the presentation, \texttt{WRITE\_THEN\_ARCHIVE} has been
+   abbreviated as \texttt{WTA} in the table.}
  \label{tab:fsm}
 \end{table}
 
