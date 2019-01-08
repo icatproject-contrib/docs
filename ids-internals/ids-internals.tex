@@ -5,7 +5,7 @@
 \usepackage{enumitem}
 
 \title{Overview of IDS Internals}
-\author{Rolf Krahl}
+\author{Emil Junker \\ Rolf Krahl}
 
 % Add a revision hint as a unnumbered footnote
 \newcommand{\revhint}{%
@@ -35,7 +35,7 @@ overview.  In order to keep the representation clear, many details
 have been omitted.  Furthermore it is somewhat biased towards the
 point of view of a storage plugin developer and it is restricted to
 the case that the IDS is configured as a two level storage.  The text
-is based on IDS server 1.10.0 and IDS plugin 1.5.0.
+is based on IDS server 1.9.1 and IDS plugin 1.4.0.
 
 When working with data objects in the storage, IDS can be configured
 to use either one of two different storage units: datasets or
@@ -78,9 +78,8 @@ process of making files from the archive storage available in the
 main storage.
 
 A data object is \texttt{RESTORING} if a \texttt{RESTORE}
-operation on that data object is in process.
-
-If this is not the case, the status is \texttt{ARCHIVED}
+operation on that data object is in process. If this is not the case,
+the status is \texttt{ARCHIVED}
 \begin{itemize}[noitemsep,topsep=0pt]
 \item if any operation other than \texttt{WRITE} is in process
 for the data object, or
@@ -88,7 +87,6 @@ for the data object, or
 \item for a dataset, if it is not empty (e.g. related datafiles
 exist), but the dataset directory does not exist in the main storage.
 \end{itemize}
-
 In all other cases, the status is \texttt{ONLINE}.
 
 
@@ -243,7 +241,7 @@ If any of the selected data objects is not \texttt{ONLINE}
 (Sec.~\ref{sec:states}), queue a \texttt{RESTORE} deferred operation
 for them and throw a \texttt{DataNotOnlineException}.
 
-Otherwise get the selected data objects from the main storage and
+Otherwise get the selected datafiles from the main storage and
 stream their content to the client.
 
 \subsection{\texttt{getDatafileIds}}
@@ -254,9 +252,13 @@ selected data objects.
 \subsection{\texttt{getLink}}
 \label{sec:requests:getlink}
 
-If the selected datafile is not \texttt{ONLINE}
-(Sec.~\ref{sec:states}), queue a \texttt{RESTORE} deferred operation
-for it and throw a \texttt{DataNotOnlineException}.
+Check the status of the selected datafile, or the status of the
+dataset related to the selected datafile, depending on the
+storage unit.
+
+If the status is not \texttt{ONLINE}, queue a \texttt{RESTORE}
+deferred operation for the corresponding data object and throw a
+\texttt{DataNotOnlineException}.
 
 Otherwise get the path of the file from main storage, set an ACL to
 grant read permission to the user on the file, and return a link to
@@ -420,8 +422,8 @@ get the datafiles and add them to the ZIP archive.
 Called from the \texttt{DfWriter} (Sec.~\ref{sec:defops:write}) to
 get the datafile and copy it to the archive storage.
 
-Called from \texttt{IdsBean} while preparing a ZIP file to be streamed
-to the client after a \texttt{getData} request
+Called from \texttt{IdsBean} while preparing a ZIP file or a single
+file to be streamed to the client after a \texttt{getData} request
 (Sec.~\ref{sec:requests:getdata}).
 
 \subsection{\texttt{mainStorage.getDatafilesToArchive(long, long)}}
@@ -450,11 +452,6 @@ storage.
 
 Called from the \texttt{DsRestorer} (Sec.~\ref{sec:defops:restore})
 to store the files extracted from a ZIP archive in the main storage.
-
-\subsection{\texttt{mainStorage.lock(DsInfo, boolean)}}
-
-Called from the \texttt{LockManager} to acquire a lock on the file
-system level for a data object in the main storage.
 
 
 \end{document}
