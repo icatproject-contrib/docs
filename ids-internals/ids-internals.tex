@@ -78,7 +78,7 @@ process of making files from the archive storage available in the
 main storage.
 
 A data object is \texttt{RESTORING} if a \texttt{RESTORE}
-operation on that data object is in process. If this is not the case,
+operation on that data object is in process.  If this is not the case,
 the status is \texttt{ARCHIVED}
 \begin{itemize}[noitemsep,topsep=0pt]
 \item if any operation other than \texttt{WRITE} is in process
@@ -125,7 +125,7 @@ from the main storage:
 \item For a datafile, get the file from the main storage and copy it
 to the archive storage.
 \item For a dataset, if the dataset directory does not exist in the
-main storage, delete the dataset from the archive storage. Otherwise,
+main storage, delete the dataset from the archive storage.  Otherwise
 get all datafiles that belong to the dataset (according to ICAT) from
 the main storage, package them as a ZIP file, and store it in the
 archive storage.
@@ -149,10 +149,10 @@ queued at a time.  Thus, the finite state machine sometimes uses the
 \texttt{ARCHIVE} deferred operation after the \texttt{WRITE} deferred
 operation is done.  The queued operation of a data object may be
 changed if another operation is queued for it while the previous one
-is still waiting in the queue, see Tab.\ \ref{tab:fsm} for the update
+is still waiting in the queue, see Tab.~\ref{tab:fsm} for the update
 matrix.
 
-\begin{table}
+\begin{table}[h]
  \begin{tabular}{l|llll}
   for datafiles    & \texttt{ARCHIVE} & \texttt{RESTORE} & \texttt{WRITE}   & \texttt{DELETE} \\
   \hline
@@ -255,7 +255,7 @@ selected data objects.
 Check the status of the selected datafile, or the status of the
 dataset related to the selected datafile, depending on the storage
 unit.  If the status is not \texttt{ONLINE}, queue a \texttt{RESTORE}
-deferred operation for the corresponding data object and throw a
+deferred operation for the data object and throw a
 \texttt{DataNotOnlineException}.
 
 Otherwise get the path of the file from main storage, set an ACL to
@@ -263,6 +263,7 @@ grant read permission to the user on the file, and return a link to
 the file.
 
 \subsection{\texttt{getStatus}}
+\label{sec:requests:getStatus}
 
 Return \texttt{ONLINE} if all selected data objects are
 \texttt{ONLINE} (Sec.~\ref{sec:states}).  Else, if at least one data
@@ -308,9 +309,14 @@ Queue a \texttt{RESTORE} deferred operation for each of the selected
 data objects.
 
 \subsection{\texttt{write}}
+\label{sec:requests:write}
 
-Queue a \texttt{WRITE} deferred operation for each of the selected
-data objects.
+If any of the selected data objects is not \texttt{ONLINE}
+(Sec.~\ref{sec:states}), queue a \texttt{RESTORE} deferred operation
+for them and throw a \texttt{DataNotOnlineException}.
+
+Otherwise queue a \texttt{WRITE} deferred operation for each of the
+selected data objects.
 
 
 \section{Maintenance tasks}
@@ -400,17 +406,40 @@ the corresponding datafile object in ICAT.
 
 \subsection{\texttt{mainStorage.exists(DsInfo)}}
 
-Called from \texttt{IdsBean} while processing various service requests
-(Sec.~\ref{sec:requests}) to determine the status of a dataset.
+Called from \texttt{IdsBean} while processing a \texttt{getStatus}
+request (Sec.~\ref{sec:requests:getStatus}) to determine the status of
+a selected dataset.
+
+Called from \texttt{IdsBean} while processing a \texttt{write}
+request (Sec.~\ref{sec:requests:write}) to check the status
+(Sec.~\ref{sec:states}) of a selected dataset.
+
+Called from \texttt{IdsBean} while attempting to restore a dataset to
+check if the dataset already exists in the main storage.
 
 Called from the \texttt{DsWriter} (Sec.~\ref{sec:defops:write}) and
 the \texttt{DsRestorer} (Sec.~\ref{sec:defops:restore}) to check if
-the dataset directory exists.
+the dataset directory exists in the main storage.
 
 \subsection{\texttt{mainStorage.exists(String)}}
 
-Called from the \texttt{DfRestorer} (Sec.~\ref{sec:defops:restore})
-to check if the datafile exists.
+Called from \texttt{IdsBean} while processing a \texttt{delete}
+request (Sec.~\ref{sec:requests:delete}) to check if a selected
+datafile exists in the main storage before deleting it.
+
+Called from \texttt{IdsBean} while processing a \texttt{getStatus}
+request (Sec.~\ref{sec:requests:getStatus}) to determine the status of
+a selected datafile.
+
+Called from \texttt{IdsBean} while processing a \texttt{write}
+request (Sec.~\ref{sec:requests:write}) to check the status
+(Sec.~\ref{sec:states}) of a selected datafile.
+
+Called from \texttt{IdsBean} while attempting to restore a datafile to
+check if the datafile already exists in the main storage.
+
+Called from the \texttt{DfRestorer} (Sec.~\ref{sec:defops:restore}) to
+check if the datafile exists in the main storage.
 
 \subsection{\texttt{mainStorage.get(String, String, String)}}
 
