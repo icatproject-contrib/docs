@@ -253,10 +253,8 @@ selected data objects.
 \label{sec:requests:getlink}
 
 Check the status of the selected datafile, or the status of the
-dataset related to the selected datafile, depending on the
-storage unit.
-
-If the status is not \texttt{ONLINE}, queue a \texttt{RESTORE}
+dataset related to the selected datafile, depending on the storage
+unit.  If the status is not \texttt{ONLINE}, queue a \texttt{RESTORE}
 deferred operation for the corresponding data object and throw a
 \texttt{DataNotOnlineException}.
 
@@ -422,9 +420,9 @@ get the datafiles and add them to the ZIP archive.
 Called from the \texttt{DfWriter} (Sec.~\ref{sec:defops:write}) to
 get the datafile and copy it to the archive storage.
 
-Called from \texttt{IdsBean} while preparing a ZIP file or a single
-file to be streamed to the client after a \texttt{getData} request
-(Sec.~\ref{sec:requests:getdata}).
+Called from \texttt{IdsBean} while processing a \texttt{getData}
+request (Sec.~\ref{sec:requests:getdata}) to get the selected
+datafiles from the main storage.
 
 \subsection{\texttt{mainStorage.getDatafilesToArchive(long, long)}}
 
