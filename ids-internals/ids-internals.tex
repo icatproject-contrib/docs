@@ -414,8 +414,9 @@ Called from \texttt{IdsBean} while processing a \texttt{write}
 request (Sec.~\ref{sec:requests:write}) to check the status
 (Sec.~\ref{sec:states}) of a selected dataset.
 
-Called from \texttt{IdsBean} while attempting to restore a dataset to
-check if the dataset already exists in the main storage.
+Called from \texttt{IdsBean} while processing various service requests
+to check if a dataset already exists in the main storage before
+attempting to restore it.
 
 Called from the \texttt{DsWriter} (Sec.~\ref{sec:defops:write}) and
 the \texttt{DsRestorer} (Sec.~\ref{sec:defops:restore}) to check if
@@ -435,8 +436,9 @@ Called from \texttt{IdsBean} while processing a \texttt{write}
 request (Sec.~\ref{sec:requests:write}) to check the status
 (Sec.~\ref{sec:states}) of a selected datafile.
 
-Called from \texttt{IdsBean} while attempting to restore a datafile to
-check if the datafile already exists in the main storage.
+Called from \texttt{IdsBean} while processing various service requests
+to check if a datafile already exists in the main storage before
+attempting to restore it.
 
 Called from the \texttt{DfRestorer} (Sec.~\ref{sec:defops:restore}) to
 check if the datafile exists in the main storage.
