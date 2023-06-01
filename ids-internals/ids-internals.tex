@@ -2,9 +2,10 @@
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{url}
+\usepackage{enumitem}
 
 \title{Overview of IDS Internals}
-\author{Rolf Krahl}
+\author{Emil Junker \\ Rolf Krahl}
 
 % Add a revision hint as a unnumbered footnote
 \newcommand{\revhint}{%
@@ -33,8 +34,12 @@ provide a reference to accommodate this need.  It is however only an
 overview.  In order to keep the representation clear, many details
 have been omitted.  Furthermore it is somewhat biased towards the
 point of view of a storage plugin developer and it is restricted to
-the case that the IDS is configured as a two level storage with the
-storage unit set to dataset.  The text is based on IDS server 1.3.1.
+the case that the IDS is configured as a two level storage.  The text
+is based on IDS server 1.9.1 and IDS plugin 1.4.0.
+
+When working with data objects in the storage, IDS can be configured
+to use either one of two different storage units: datasets or
+datafiles.  This text tries to describe the behavior in both cases.
 
 The workflow in the IDS can be sketched as follows: the IDS waits for
 incoming service requests coming from the user.  In some cases, these
@@ -42,18 +47,17 @@ requests may be completed immediately.  In other cases, a deferred
 operation that will be processed in the background later is queued.
 
 Before describing this workflow in detail, we give the definition of
-the status of a dataset in Section \ref{sec:states}.  Section
-\ref{sec:requests} lists the service request and what is done in each
-case.  The various operations that are queued for any given dataset
-are kept track of in a finite state machine.  This is detailed in
-Section \ref{sec:fsm}.  When processing the queue, each of the
-deferred operations is executed in a separate thread.  Section
-\ref{sec:defops} describes what is being done for each of the
-operations.  Besides processing service requests, some maintenance
-task are running regularly in the background.  These tasks are
-described in Section \ref{sec:maintenance}.  Finally, we provide an
-index of the context that each storage plugin method is called from in
-Section \ref{sec:plugincalls}.
+the status of a data object in Section \ref{sec:states}.  Section
+\ref{sec:defops} describes the different deferred operations and what
+is being done for each of them.  The various operations that are
+queued for any given data object are kept track of in a finite state
+machine.  This is detailed in Section \ref{sec:fsm}.  Section
+\ref{sec:requests} lists the available service request.  Besides
+processing the service requests, there are some maintenance tasks
+running regularly in the background.  These tasks are described in
+Section \ref{sec:maintenance}.  Finally, we provide an index of the
+context that each storage plugin method is called from in Section
+\ref{sec:plugincalls}.
 
 
 \section{Internal states}
@@ -61,144 +65,29 @@ Section \ref{sec:plugincalls}.
 
 The processing of a data object is influenced by its internal state
 and what operations have been queued for them.  We say that an
-operation is \emph{in process} on a dataset if this operation is
+operation is \emph{in process} on a data object if this operation is
 either in the queue or if it is currently being executed for that
-dataset.
+data object.
 
-The status of a dataset may either be \texttt{ONLINE},
-\texttt{ARCHIVED}, or \texttt{RESTORING}.  It is \texttt{RESTORING} if
-a \texttt{RESTORE} operation on that dataset is in process.  If this
-is not the case, the status is \texttt{ARCHIVED} if any other
-operation then \texttt{WRITE} is in process or if the dataset is not
-empty (e.g. related datafiles exist), but the dataset directory does
-not exist in the main storage.  In all other cases, the status is
-\texttt{ONLINE}.
+The status of a data object may either be \texttt{ONLINE},
+\texttt{ARCHIVED}, or \texttt{RESTORING}.  In this context,
+\texttt{ARCHIVED} refers to files being available only in the archive
+storage, while \texttt{ONLINE} refers to the files being available in
+the main storage as well.  The \texttt{RESTORING} state describes the
+process of making files from the archive storage available in the
+main storage.
 
-
-\section{Service requests}
-\label{sec:requests}
-
-In this section, we consider each IDS request and describe in detail
-what is done in each case.  We consider only requests that interact in
-any way with the storage plugin.  The requests \texttt{getApiVersion},
-\texttt{getServiceStatus}, \texttt{getSize} \texttt{isReadOnly},
-\texttt{isTwoLevel}, and \texttt{ping} are thus skipped.
-
-Several service calls that deal with a selection of data objects in
-the storage expect lists of datafile, dataset, and investigation ids
-as parameter.  Most internal processing is done at dataset level and
-it only matters which datasets are concerned.  In these cases, we use
-the term \emph{selected datasets} regardless whether the objects have
-actually been selected by datafile, dataset, or investigation id.  In
-a similar manner, we use the term \emph{selected datafiles}.
-
-\subsection{\texttt{archive}}
-
-Queue an \texttt{ARCHIVE} deferred operation for each of the selected
-datasets.
-
-\subsection{\texttt{delete}}
-\label{sec:requests:delete}
-
-If any of the selected datasets is not \texttt{ONLINE}
-(Sec.\ \ref{sec:states}), queue a \texttt{RESTORE} deferred operation
-for them and throw a \texttt{DataNotOnlineException}.
-
-Otherwise delete the selected datafiles from ICAT and from the main
-storage.  Finally queue a \texttt{WRITE} deferred operation for each
-of the selected datasets.
-
-\subsection{\texttt{getData}}
-\label{sec:requests:getdata}
-
-If any of the selected datasets is not \texttt{ONLINE}
-(Sec.\ \ref{sec:states}), queue a \texttt{RESTORE} deferred operation
-for them and throw a \texttt{DataNotOnlineException}.
-
-Otherwise get the selected datafiles from the main storage and stream
-their content to the client.
-
-\subsection{\texttt{getLink}}
-\label{sec:requests:getlink}
-
-If the dataset related to the selected datafile is not \texttt{ONLINE}
-(Sec.\ \ref{sec:states}), queue a \texttt{RESTORE} deferred operation
-for it and throw a \texttt{DataNotOnlineException}.
-
-Otherwise get the path of the file from main storage, set an ACL to
-grant read permission to the user on the file, and create a link to
-the file.
-
-\subsection{\texttt{getStatus}}
-
-Return \texttt{ONLINE} if all selected datasets are \texttt{ONLINE}
-(Sec.\ \ref{sec:states}), otherwise return either \texttt{ARCHIVED} or
-\texttt{RESTORING}.
-
-\subsection{\texttt{isPrepared}}
-
-If any of the selected datasets (as stored in the previously prepared
-data selection) is not \texttt{ONLINE} (Sec.\ \ref{sec:states}), queue
-a \texttt{RESTORE} deferred operation for them and return
-\texttt{false}.
-
-Otherwise return \texttt{true}.
-
-\subsection{\texttt{prepareData}}
-
-If any of the selected datasets is not \texttt{ONLINE}
-(Sec.\ \ref{sec:states}), queue a \texttt{RESTORE} deferred operation
-for them.  Store the data selection and other parameter of the request
-and return the prepared id for later referral.
-
-\subsection{\texttt{put}}
-\label{sec:requests:put}
-
-If the dataset referenced in the request is not \texttt{ONLINE}
-(Sec.\ \ref{sec:states}), queue a \texttt{RESTORE} deferred operation
-for it and throw a \texttt{DataNotOnlineException}.
-
-Otherwise store the uploaded file in the main storage, create the
-datafile object in ICAT, and queue a \texttt{WRITE} deferred operation
-for the dataset.
-
-\subsection{\texttt{restore}}
-
-Queue an \texttt{RESTORE} deferred operation for each of the selected
-datasets.
-
-
-\section{Finite state machine}
-\label{sec:fsm}
-
-The finite state machine manages the queue of deferred operations for
-each dataset.  The operation may be changed if another operation is
-queued for the same dataset while the previous one is still waiting in
-the queue, see Tab.\ \ref{tab:fsm} for the update matrix.
-\begin{table}
-  \centering
-  \begin{tabular}{l|lll}
-                                  & \texttt{ARCHIVE} & \texttt{RESTORE} & \texttt{WRITE} \\
-    \hline
-    none                          & \texttt{ARCHIVE} & \texttt{RESTORE} & \texttt{WRITE} \\
-    \texttt{ARCHIVE}              & \texttt{ARCHIVE} & \texttt{RESTORE} & \texttt{WRITE\_THEN\_ARCHIVE} \\
-    \texttt{RESTORE}              & \texttt{ARCHIVE} & \texttt{RESTORE} & \texttt{WRITE} \\
-    \texttt{WRITE}                & \texttt{WRITE\_THEN\_ARCHIVE} & \texttt{WRITE} & \texttt{WRITE} \\
-    \texttt{WRITE\_THEN\_ARCHIVE} & \texttt{WRITE\_THEN\_ARCHIVE} & \texttt{WRITE} & \texttt{WRITE\_THEN\_ARCHIVE} \\
-  \end{tabular}
-  \caption{Update matrix for queued operations.  Matrix entries are
-    the result if a new operation (column) is queued while a previous
-    one (row) is still waiting in the queue.}
-  \label{tab:fsm}
-\end{table}
-
-The queue is processed regularly by a timer task that starts a new
-thread to execute each of the pending operations.  The execution of a
-queued operation for a dataset is hold back while a previous operation
-for the same dataset is currently being executed.  \texttt{WRITE}
-operations are processed with a delay that is fixed when the operation
-is queued.  Any subsequent \texttt{WRITE} operation queued for the
-same dataset pushes this delay further.
+A data object is \texttt{RESTORING} if a \texttt{RESTORE}
+operation on that data object is in process.  If this is not the case,
+the status is \texttt{ARCHIVED}
+\begin{itemize}[noitemsep,topsep=0pt]
+\item if any operation other than \texttt{WRITE} is in process
+for the data object, or
+\item for a datafile, if it does not exist in the main storage, or
+\item for a dataset, if it is not empty (e.g. related datafiles
+exist), but the dataset directory does not exist in the main storage.
+\end{itemize}
+In all other cases, the status is \texttt{ONLINE}.
 
 
 \section{Deferred operations}
@@ -211,37 +100,223 @@ threads do in each case.
 \subsection{\texttt{ARCHIVE}}
 \label{sec:defops:archive}
 
-Delete the dataset from the main storage.
+Delete the data object from the main storage.  This leaves only the
+files in the archive storage.
 
 \subsection{\texttt{RESTORE}}
 \label{sec:defops:restore}
 
-Get the ZIP file of the dataset from the archive storage, extract the
-datafiles from it, and store the datafiles in the main storage.
+Make the data object from the archive storage available in the
+main storage:
+\begin{itemize}[noitemsep,topsep=0pt]
+\item For a datafile, get the file from the archive storage and
+copy it to the main storage.
+\item For a dataset, get the ZIP file of the dataset from the
+archive storage, extract it, and store the contained datafiles in a
+dataset directory in the main storage.
+\end{itemize}
 
 \subsection{\texttt{WRITE}}
 \label{sec:defops:write}
 
-If the dataset directory does not exist in the main storage, delete
-the ZIP file of the dataset from archive storage.
+Overwrite the file in the archive storage with the latest version
+from the main storage:
+\begin{itemize}[noitemsep,topsep=0pt]
+\item For a datafile, get the file from the main storage and copy it
+to the archive storage.
+\item For a dataset, if the dataset directory does not exist in the
+main storage, delete the dataset from the archive storage.  Otherwise
+get all datafiles that belong to the dataset (according to ICAT) from
+the main storage, package them as a ZIP file, and store it in the
+archive storage.
+\end{itemize}
 
-Otherwise create a new ZIP file, get all datafiles that belong to the
-dataset (according to ICAT) from the main storage and add them to the
-ZIP file.  Store this ZIP file in the archive storage.
+\subsection{\texttt{DELETE}}
+\label{sec:defops:delete}
 
-\subsection{\texttt{WRITE\_THEN\_ARCHIVE}}
-\label{sec:defops:writethenarchive}
+This operation is only available for datafiles, not for datasets.
 
-As the name suggests, same as \texttt{WRITE} and then
-\texttt{ARCHIVE}:
+Delete the datafile from the archive storage.
 
-If the dataset directory does not exist in the main storage, delete
-the ZIP file of the dataset from archive storage.
 
-Otherwise create a new ZIP file, get all datafiles that belong to the
-dataset (according to ICAT) from the main storage and add them to the
-ZIP file.  Store this ZIP file in the archive storage.  Delete the
-dataset from the main storage.
+\section{Finite state machine}
+\label{sec:fsm}
+
+The finite state machine manages the queue of deferred operations for
+the data objects.  For each data object, only one operation can be
+queued at a time.  Thus, the finite state machine sometimes uses the
+\texttt{WRITE\_THEN\_ARCHIVE} state, to remember to queue up an
+\texttt{ARCHIVE} deferred operation after the \texttt{WRITE} deferred
+operation is done.  The queued operation of a data object may be
+changed if another operation is queued for it while the previous one
+is still waiting in the queue, see Tab.~\ref{tab:fsm} for the update
+matrix.
+
+\begin{table}[h]
+ \begin{tabular}{l|llll}
+  for datafiles    & \texttt{ARCHIVE} & \texttt{RESTORE} & \texttt{WRITE}   & \texttt{DELETE} \\
+  \hline
+  none             & \texttt{ARCHIVE} & \texttt{RESTORE} & \texttt{WRITE}   & \texttt{DELETE} \\
+  \texttt{ARCHIVE} & \texttt{ARCHIVE} & none             & \texttt{ARCHIVE} & \texttt{DELETE} \\
+  \texttt{RESTORE} & \texttt{ARCHIVE} & \texttt{RESTORE} & \texttt{RESTORE} & \texttt{DELETE} \\
+  \texttt{WRITE}   & \texttt{WTA}     & \texttt{WRITE}   & \texttt{WRITE}   & none \\
+  \texttt{DELETE}  & \texttt{DELETE}  & \texttt{DELETE}  & \texttt{DELETE}  & \texttt{DELETE} \\
+  \texttt{WTA}     & \texttt{WTA}     & \texttt{WRITE}   & \texttt{WTA}     & none \\
+ \end{tabular}
+ \bigbreak
+ \begin{tabular}{l|lll}
+  for datasets     & \texttt{ARCHIVE} & \texttt{RESTORE} & \texttt{WRITE} \\
+  \hline
+  none             & \texttt{ARCHIVE} & \texttt{RESTORE} & \texttt{WRITE} \\
+  \texttt{ARCHIVE} & \texttt{ARCHIVE} & \texttt{RESTORE} & \texttt{WTA} \\
+  \texttt{RESTORE} & \texttt{ARCHIVE} & \texttt{RESTORE} & \texttt{WRITE} \\
+  \texttt{WRITE}   & \texttt{WTA}     & \texttt{WRITE}   & \texttt{WRITE} \\
+  \texttt{WTA}     & \texttt{WTA}     & \texttt{WRITE}   & \texttt{WTA} \\
+ \end{tabular}
+ \caption{Update matrix for queued operations.  Matrix entries are the
+   result if a new operation (column) is queued while a previous one
+   (row) is still waiting in the queue.  For the sake of clarity in
+   the presentation, \texttt{WRITE\_THEN\_ARCHIVE} has been
+   abbreviated as \texttt{WTA} in the table.}
+ \label{tab:fsm}
+\end{table}
+
+The queue is processed regularly by a timer task that starts a new
+thread to execute each of the pending operations.
+
+\texttt{WRITE} operations for datasets are processed with a delay
+that is fixed when the operation is queued.  Any subsequent
+\texttt{WRITE} operation queued for the same dataset pushes this
+delay further.
+
+
+\section{Service requests}
+\label{sec:requests}
+
+In this section, we consider each IDS request and describe in detail
+what is done in each case.  We consider only requests that interact in
+any way with the storage plugin.  The requests \texttt{getApiVersion},
+\texttt{getIcatUrl}, \texttt{getServiceStatus}, \texttt{getSize},
+\texttt{isReadOnly}, \texttt{isTwoLevel}, \texttt{ping}, and
+\texttt{version} are thus skipped.
+
+Several service calls that deal with a selection of data objects in
+the storage expect lists of datafile, dataset, and investigation ids
+as parameter.  As most internal processing is done at the level of the
+configured storage unit, it only matters which datafiles or datasets,
+respectively, are concerned.  In these cases, we use the terms
+\emph{selected datafiles} and \emph{selected datasets} regardless
+whether the data objects have actually been selected by datafile,
+dataset, or investigation id.
+
+Another way to select data objects is to specify a
+\emph{prepared id}.  This can be done only after making a
+\texttt{prepareData} service call
+(Sec.~\ref{sec:requests:prepareData}), and it automatically
+selects all data objects that where previously prepared.
+
+\subsection{\texttt{archive}}
+
+Queue an \texttt{ARCHIVE} deferred operation for each of the selected
+data objects.
+
+\subsection{\texttt{delete}}
+\label{sec:requests:delete}
+
+If the storage unit is set to dataset and any of the selected
+datasets is not \texttt{ONLINE} (Sec.~\ref{sec:states}), queue a
+\texttt{RESTORE} deferred operation for them and throw a
+\texttt{DataNotOnlineException}.
+
+Otherwise delete the selected data objects from ICAT and from the main
+storage.  Finally, queue a \texttt{DELETE} deferred operation for each
+of the selected datafiles, or a \texttt{WRITE} deferred operation for
+each of the selected datasets, depending on the storage unit, in order
+to get the files deleted from the archive storage as well.
+
+\subsection{\texttt{getData}}
+\label{sec:requests:getdata}
+
+If any of the selected data objects is not \texttt{ONLINE}
+(Sec.~\ref{sec:states}), queue a \texttt{RESTORE} deferred operation
+for them and throw a \texttt{DataNotOnlineException}.
+
+Otherwise get the selected datafiles from the main storage and
+stream their content to the client.
+
+\subsection{\texttt{getDatafileIds}}
+
+Return a list of all datafile ids that are part of the set of
+selected data objects.
+
+\subsection{\texttt{getLink}}
+\label{sec:requests:getlink}
+
+Check the status of the selected datafile, or the status of the
+dataset related to the selected datafile, depending on the storage
+unit.  If the status is not \texttt{ONLINE}, queue a \texttt{RESTORE}
+deferred operation for the data object and throw a
+\texttt{DataNotOnlineException}.
+
+Otherwise get the path of the file from main storage, set an ACL to
+grant read permission to the user on the file, and return a link to
+the file.
+
+\subsection{\texttt{getStatus}}
+\label{sec:requests:getStatus}
+
+Return \texttt{ONLINE} if all selected data objects are
+\texttt{ONLINE} (Sec.~\ref{sec:states}).  Else, if at least one data
+object is archived, return \texttt{ARCHIVED}, otherwise return
+\texttt{RESTORING}.
+
+\subsection{\texttt{isPrepared}}
+
+If any of the selected data objects from a previously prepared
+data selection (Sec.~\ref{sec:requests:prepareData}) is not yet
+\texttt{ONLINE} (Sec.~\ref{sec:states}), queue a \texttt{RESTORE}
+deferred operation for them and return \texttt{false}.
+
+Otherwise return \texttt{true}.
+
+\subsection{\texttt{prepareData}}
+\label{sec:requests:prepareData}
+
+If any of the selected data objects is not \texttt{ONLINE}
+(Sec.~\ref{sec:states}), queue a \texttt{RESTORE} deferred operation
+for them.  Store the data selection and other parameter of the request
+and return the \emph{prepared id} for later referral.
+
+\subsection{\texttt{put}}
+\label{sec:requests:put}
+
+If the storage unit is set to dataset and the referenced dataset is
+not \texttt{ONLINE} (Sec.~\ref{sec:states}), queue a \texttt{RESTORE}
+deferred operation for it and throw a \texttt{DataNotOnlineException}.
+
+Otherwise store the uploaded datafile in the main storage, create the
+datafile object in ICAT, and queue a \texttt{WRITE} deferred operation
+for the respective data object.
+
+\subsection{\texttt{reset}}
+
+Reset the status flag of the selected data objects so that they can
+be queried again after a failed \texttt{restore} operation.
+
+\subsection{\texttt{restore}}
+
+Queue a \texttt{RESTORE} deferred operation for each of the selected
+data objects.
+
+\subsection{\texttt{write}}
+\label{sec:requests:write}
+
+If any of the selected data objects is not \texttt{ONLINE}
+(Sec.~\ref{sec:states}), queue a \texttt{RESTORE} deferred operation
+for them and throw a \texttt{DataNotOnlineException}.
+
+Otherwise queue a \texttt{WRITE} deferred operation for each of the
+selected data objects.
 
 
 \section{Maintenance tasks}
@@ -253,113 +328,159 @@ independently from user actions.
 \subsection{\texttt{FileChecker}}
 \label{sec:maintenance:filechecker}
 
+The File Checker is only available for the storage unit dataset.
+
 Iterate over all datasets in the ICAT including their datafiles.  For
 each dataset, get the ZIP file from the archive storage and inspect it
 to check that the list of datafiles in the ZIP file matches the list
-of datafiles in the dataset and that length and checksum matches for
-each of the datafiles.
+of datafiles in ICAT and that length and checksum matches for each of
+the datafiles.
 
 \subsection{\texttt{Tidier}}
 \label{sec:maintenance:tidier}
 
-Query the main storage plugin for a list of datasets to remove in
+Query the main storage plugin for a list of data objects to remove in
 order to get the overall size of the main storage below the configured
 limit.  Queue an \texttt{ARCHIVE} deferred operation for each of the
-returned datasets.
+returned data objects.
 
 
 \section{Index of plugin method calls}
 \label{sec:plugincalls}
 
 In this section, we list for each of the storage plugin methods the
-context that it is called from.  Methods not listed here are never
-called in the considered configuration.
+context that it is called from.
 
 \subsection{\texttt{archiveStorage.delete(DsInfo)}}
 
-Called from the \texttt{DsWriter} (Sec.\ \ref{sec:defops:write}) and
-the \texttt{DsWriteThenArchiver}
-(Sec.\ \ref{sec:defops:writethenarchive}) if the dataset directory
-does not exist in the main storage.
+Called from the \texttt{DsWriter} (Sec.~\ref{sec:defops:write}) if
+the dataset directory does not exist in the main storage.
+
+\subsection{\texttt{archiveStorage.delete(String)}}
+
+Called from the \texttt{DfDeleter} (Sec.~\ref{sec:defops:delete}) to
+delete the datafile from the archive storage.
 
 \subsection{\texttt{archiveStorage.get(DsInfo, Path)}}
 
-Called from the \texttt{DsRestorer} (Sec.\ \ref{sec:defops:restore})
-to extract the ZIP file from the archive storage into main storage.
+Called from the \texttt{DsRestorer} (Sec.~\ref{sec:defops:restore})
+to extract the dataset's ZIP file from the archive storage into the
+main storage.
+
 Called from the \texttt{FileChecker}
-(Sec. \ref{sec:maintenance:filechecker}) to inspect the ZIP file.
+(Sec.~\ref{sec:maintenance:filechecker}) to inspect the ZIP file.
 
 \subsection{\texttt{archiveStorage.put(DsInfo, InputStream)}}
 
-Called from the \texttt{DsWriter} (Sec.\ \ref{sec:defops:write}) and
-the \texttt{DsWriteThenArchiver}
-(Sec.\ \ref{sec:defops:writethenarchive}) to store the ZIP file in the
-archive storage.
+Called from the \texttt{DsWriter} (Sec.~\ref{sec:defops:write}) to
+store the ZIP file in the archive storage.
+
+\subsection{\texttt{archiveStorage.put(InputStream, String)}}
+
+Called from the \texttt{DfWriter} (Sec.~\ref{sec:defops:write}) to
+store the file in the archive storage.
+
+\subsection{\texttt{archiveStorage.restore(MainStorageInterface, DfInfos)}}
+
+Called from the \texttt{DfRestorer} (Sec.~\ref{sec:defops:restore})
+to copy the datafile from the archive storage to the main storage.
+
+\subsection{\texttt{mainStorage.delete(DsInfo)}}
+
+Called from the \texttt{DsArchiver} (Sec.~\ref{sec:defops:archive})
+to delete the dataset from the main storage.
+
+\subsection{\texttt{mainStorage.delete(String, String, String)}}
+
+Called from the \texttt{DfArchiver} (Sec.~\ref{sec:defops:archive})
+to delete the datafile from the main storage.
+
+Called from \texttt{IdsBean} while processing a \texttt{delete}
+request (Sec.~\ref{sec:requests:delete}) to delete the selected
+datafiles from the main storage.
+
+Called from \texttt{IdsBean} while processing a \texttt{put} request
+(Sec.~\ref{sec:requests:put}) to delete the uploaded file from the
+main storage again in the case that an error occurred while creating
+the corresponding datafile object in ICAT.
 
 \subsection{\texttt{mainStorage.exists(DsInfo)}}
 
+Called from \texttt{IdsBean} while processing a \texttt{getStatus}
+request (Sec.~\ref{sec:requests:getStatus}) to determine the status of
+a selected dataset.
+
+Called from \texttt{IdsBean} while processing a \texttt{write}
+request (Sec.~\ref{sec:requests:write}) to check the status
+(Sec.~\ref{sec:states}) of a selected dataset.
+
 Called from \texttt{IdsBean} while processing various service requests
-(Sec.\ \ref{sec:requests}) to determine the status of a dataset.
-Called from the \texttt{DsWriter} (Sec.\ \ref{sec:defops:write}) and
-the \texttt{DsWriteThenArchiver}
-(Sec.\ \ref{sec:defops:writethenarchive}) to check if the dataset
-directory exists.
+to check if a dataset already exists in the main storage before
+attempting to restore it.
+
+Called from the \texttt{DsWriter} (Sec.~\ref{sec:defops:write}) and
+the \texttt{DsRestorer} (Sec.~\ref{sec:defops:restore}) to check if
+the dataset directory exists in the main storage.
 
 \subsection{\texttt{mainStorage.exists(String)}}
 
 Called from \texttt{IdsBean} while processing a \texttt{delete}
-request (Sec.\ \ref{sec:requests:delete}) to check if a selected
+request (Sec.~\ref{sec:requests:delete}) to check if a selected
 datafile exists in the main storage before deleting it.
 
-\subsection{\texttt{mainStorage.delete(DsInfo)}}
+Called from \texttt{IdsBean} while processing a \texttt{getStatus}
+request (Sec.~\ref{sec:requests:getStatus}) to determine the status of
+a selected datafile.
 
-Called from the \texttt{DsArchiver} (Sec.\ \ref{sec:defops:archive})
-and the \texttt{DsWriteThenArchiver}
-(Sec.\ \ref{sec:defops:writethenarchive}) to delete the dataset from
-the main storage.
+Called from \texttt{IdsBean} while processing a \texttt{write}
+request (Sec.~\ref{sec:requests:write}) to check the status
+(Sec.~\ref{sec:states}) of a selected datafile.
 
-\subsection{\texttt{mainStorage.delete(String, String, String)}}
+Called from \texttt{IdsBean} while processing various service requests
+to check if a datafile already exists in the main storage before
+attempting to restore it.
 
-Called from \texttt{IdsBean} while processing a \texttt{delete}
-request (Sec.\ \ref{sec:requests:delete}) to delete the selected
-datafiles from the main storage.  Called from \texttt{IdsBean} while
-processing a \texttt{put} request (Sec.\ \ref{sec:requests:put}) to
-delete the uploaded file from the main storage again in the case that
-an error occurred while creating the correspoding datafile object in
-ICAT.
+Called from the \texttt{DfRestorer} (Sec.~\ref{sec:defops:restore}) to
+check if the datafile exists in the main storage.
 
 \subsection{\texttt{mainStorage.get(String, String, String)}}
 
+Called from the \texttt{DsWriter} (Sec.~\ref{sec:defops:write}) to
+get the datafiles and add them to the ZIP archive.
+
+Called from the \texttt{DfWriter} (Sec.~\ref{sec:defops:write}) to
+get the datafile and copy it to the archive storage.
+
 Called from \texttt{IdsBean} while processing a \texttt{getData}
-request (Sec.\ \ref{sec:requests:getdata}) to get the selected
-datafiles from the main storage.  Called from the \texttt{DsWriter}
-(Sec.\ \ref{sec:defops:write}) and the \texttt{DsWrite\-Then\-Archiver}
-(Sec.\ \ref{sec:defops:writethenarchive}) to get the datafiles and add
-them to the ZIP archive.
+request (Sec.~\ref{sec:requests:getdata}) to get the selected
+datafiles from the main storage.
+
+\subsection{\texttt{mainStorage.getDatafilesToArchive(long, long)}}
+
+Called from the \texttt{Tidier} (Sec.~\ref{sec:maintenance:tidier}) to
+query the main storage plugin for a list of datafiles to remove.
+
+\subsection{\texttt{mainStorage.getDatasetsToArchive(long, long)}}
+
+Called from the \texttt{Tidier} (Sec.~\ref{sec:maintenance:tidier}) to
+query the main storage plugin for a list of datasets to remove.
 
 \subsection{\texttt{mainStorage.getPath(String, String, String)}}
 
 Called from \texttt{IdsBean} while processing a \texttt{getLink}
-request (Sec.\ \ref{sec:requests:getlink}) to get the path of the file
+request (Sec.~\ref{sec:requests:getlink}) to get the path of the file
 from main storage.
 
 \subsection{\texttt{mainStorage.put(DsInfo, String, InputStream)}}
 
 Called from \texttt{IdsBean} while processing a \texttt{put} request
-(Sec.\ \ref{sec:requests:put}) to store the uploaded file in the main
+(Sec.~\ref{sec:requests:put}) to store the uploaded file in the main
 storage.
 
 \subsection{\texttt{mainStorage.put(InputStream, String)}}
 
-Called from the \texttt{DsRestorer} (Sec.\ \ref{sec:defops:restore})
-to store the file extracted from the ZIP into main storage.
-
-\subsection{\texttt{mainStorage.getDatasetsToArchive(long, long)}}
-
-Called from the \texttt{Tidier} (Sec. \ref{sec:maintenance:tidier}) to
-query the main storage plugin for a list of datasets to remove.
+Called from the \texttt{DsRestorer} (Sec.~\ref{sec:defops:restore})
+to store the files extracted from a ZIP archive in the main storage.
 
 
 \end{document}
-
-

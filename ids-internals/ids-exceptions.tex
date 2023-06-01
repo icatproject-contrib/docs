@@ -1,0 +1,254 @@
+\documentclass[paper=a4]{scrartcl}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{float}
+\usepackage{longtable}
+
+\restylefloat{table}
+
+\title{IDS Exception Handling}
+\author{Emil Junker}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+This document describes the way IDS server handles exceptions when calling methods in the storage plugin.
+
+Throughout this document, we use the terms "\textit{after} a service request" and "\textit{during} a deferred operation" to indicate when a particular method is called.
+This is important, because if a method is called immediately \textit{after} a service request, the client may expect to be informed about possible errors via the HTTP status code.
+The same is not possible for errors that happen \textit{during} a deferred operation in an asynchronous background thread.
+
+\pagebreak
+
+
+\section{Exception handling in IDS for each plugin method}
+\label{sec:pluginmethods}
+
+\begin{longtable}{ p{32mm} | p{48mm} | p{48mm} }
+
+    Call context & Details & Exception handling \\
+    \hline \hline
+
+    \multicolumn{3}{p{\textwidth}}{
+      \subsection{\texttt{archiveStorage.delete(DsInfo)}}
+    } \\
+
+    \raggedright \texttt{DsWriter} &
+    \raggedright Dataset is deleted from archive storage during \texttt{write} deferred operation. &
+    \raggedright Exception is caught and written to log. \textbf{No changes needed.}
+    \tabularnewline
+
+    \multicolumn{3}{p{\textwidth}}{
+      \subsection{\texttt{archiveStorage.delete(String)}}
+    } \\
+
+    \raggedright \texttt{DfDeleter} &
+    \raggedright Datafile is deleted from archive storage during \texttt{delete} deferred operation. &
+    \raggedright Exception is caught and written to log. \textbf{No changes needed.}
+    \tabularnewline
+
+    \multicolumn{3}{p{\textwidth}}{
+      \subsection{\texttt{archiveStorage.get(DsInfo, Path)}}
+    } \\
+
+    \raggedright \texttt{DsRestorer} &
+    \raggedright Dataset is copied from archive storage to extract it into main storage during \texttt{restore} deferred operation. &
+    \raggedright Exception is caught and written to log. Dataset is marked as \texttt{failure} in Finite State Machine. No possibility for data loss. \textbf{No changes needed.}
+    \tabularnewline[4mm]
+    \raggedright \texttt{FileChecker} &
+    \raggedright Dataset content is checked by \texttt{FileChecker}. &
+    \raggedright IOException is caught and incident is reported by \texttt{FileChecker}. \textbf{Could catch other Exceptions as well.}
+    \tabularnewline
+
+    \multicolumn{3}{p{\textwidth}}{
+      \subsection{\texttt{archiveStorage.put(DsInfo, InputStream)}}
+    } \\
+
+    \raggedright \texttt{DsWriter} &
+    \raggedright Dataset is written to archive storage during \texttt{write} deferred operation. &
+    \raggedright Exception is caught and written to log. Marker file of dataset does not get deleted which prevents data loss via an \texttt{archive} deferred operation. \textbf{No changes needed.}
+    \tabularnewline
+
+    \multicolumn{3}{p{\textwidth}}{
+      \subsection{\texttt{archiveStorage.put(InputStream, String)}}
+    } \\
+
+    \raggedright \texttt{DfWriter} &
+    \raggedright Datafile is written to archive storage during \texttt{write} deferred operation. &
+    \raggedright Exception is caught and written to log. Marker file of datafile does not get deleted which prevents data loss via an \texttt{archive} deferred operation. \textbf{No changes needed.}
+    \tabularnewline
+
+    \multicolumn{3}{p{\textwidth}}{
+      \subsection{\texttt{archiveStorage.restore(MainStorageInterface, DfInfos)}}
+    } \\
+
+    \raggedright \texttt{DfRestorer} &
+    \raggedright Datafile is copied from archive storage to main storage during \texttt{restore} deferred operation. &
+    \raggedright Exception is caught and written to log. Dataset is not marked as \texttt{failure} in Finite State Machine. No possibility for data loss, but \textbf{should record failure in Finite State Machine.}
+    \tabularnewline
+
+    \pagebreak
+
+    \multicolumn{3}{p{\textwidth}}{
+      \subsection{\texttt{mainStorage.delete(DsInfo)}}
+    } \\
+
+    \raggedright \texttt{DsArchiver} &
+    \raggedright Dataset is deleted from main storage during \texttt{archive} deferred operation. &
+    \raggedright Exception is caught and written to log. \textbf{No changes needed.}
+    \tabularnewline
+
+    \multicolumn{3}{p{\textwidth}}{
+      \subsection{\texttt{mainStorage.delete(String, String, String)}}
+    } \\
+
+    \raggedright \texttt{DfArchiver} &
+    \raggedright Datafile is deleted from main storage during \texttt{archive} deferred operation. &
+    \raggedright Exception is caught and written to log. \textbf{No changes needed.}
+    \tabularnewline[4mm]
+    \raggedright \texttt{IdsBean} \texttt{delete} request &
+    \raggedright Datafile is deleted from main storage after \texttt{delete} service request &
+    \raggedright IOException is caught and written to log. \texttt{InternalException} is thrown to return HTTP status code 500. \textbf{Could catch other Exceptions as well.}
+    \tabularnewline[4mm]
+    \raggedright \texttt{IdsBean} \texttt{put} request &
+    \raggedright Datafile is deleted from main storage after a \texttt{put} service request when registering the datafile object in ICAT failed. &
+    \raggedright IOException is caught and written to log. Misplaced datafile does not get deleted. \texttt{InternalException} is thrown to return HTTP status code 500. \textbf{Should delete the datafile, and could catch other Exceptions as well.}
+    \tabularnewline
+
+    \multicolumn{3}{p{\textwidth}}{
+      \subsection{\texttt{mainStorage.exists(DsInfo)}}
+    } \\
+
+    \raggedright \texttt{IdsBean} \texttt{restoreIfOffline} method &
+    \raggedright Data object is checked for existence after various service requests. &
+    \raggedright IOException is not caught and left for calling method to deal with, declaring "throws IOException". \textbf{No changes needed.}
+    \tabularnewline[4mm]
+    \raggedright \texttt{DsWriter} &
+    \raggedright Dataset is checked for existence during \texttt{write} deferred operation. &
+    \raggedright Exception is caught and written to log. Marker file of dataset does not get deleted which prevents data loss during a possible \texttt{archive} deferred operation. \textbf{No changes needed.}
+    \tabularnewline[4mm]
+    \raggedright \texttt{DsRestorer} &
+    \raggedright Dataset is checked for existence during \texttt{restore} deferred operation. &
+    \raggedright IOException is caught and written to log. DfRestorer is optimistic and attempts restoration of the dataset. \textbf{Could simplify calling code by omitting "throws IOException" declaration from the plugin method.}
+    \tabularnewline[4mm]
+    \raggedright \texttt{IdsBean} \texttt{delete} request &
+    \raggedright Data object is checked for existence after \texttt{delete} service request. &
+    \raggedright IOException is caught and written to log. \texttt{InternalException} is thrown to return HTTP status code 500. \textbf{Could catch other Exceptions as well.}
+    \tabularnewline[4mm]
+    \raggedright \texttt{IdsBean} \texttt{getStatus} request &
+    \raggedright Data object is checked for existence after \texttt{getStatus} service request. &
+    \raggedright IOException is caught and written to log. \texttt{InternalException} is thrown to return HTTP status code 500. \textbf{Could catch other Exceptions as well.}
+    \tabularnewline[4mm]
+    \raggedright \texttt{IdsBean} \texttt{write} request &
+    \raggedright Data object is checked for existence after \texttt{write} service request. &
+    \raggedright IOException is caught and written to log. \texttt{InternalException} is thrown to return HTTP status code 500. \textbf{Could catch other Exceptions as well.}
+    \tabularnewline
+
+    \multicolumn{3}{p{\textwidth}}{
+      \subsection{\texttt{mainStorage.exists(String)}}
+    } \\
+
+    \raggedright \texttt{DfRestorer} &
+    \raggedright Datafile is checked for existence during \texttt{restore} deferred operation. &
+    \raggedright IOException is caught and written to log. \texttt{DfRestorer} is optimistic and attempts restoration of the datafile. \textbf{Could simplify calling code by omitting "throws IOException" declaration from the plugin method.}
+    \tabularnewline
+
+    \multicolumn{3}{p{\textwidth}}{
+      \subsection{\texttt{mainStorage.get(String, String, String)}}
+    } \\
+
+    \raggedright \texttt{DsWriter} &
+    \raggedright Dataset content is read from main storage during \texttt{write} deferred operation. &
+    \raggedright Exception is caught and written to log. \textbf{No changes needed.}
+    \tabularnewline[4mm]
+    \raggedright \texttt{DfWriter} &
+    \raggedright Datafile content is read from main storage during \texttt{write} deferred operation. &
+    \raggedright Exception is caught and written to log. \textbf{No changes needed.}
+    \tabularnewline[4mm]
+    \raggedright \texttt{IdsBean} \texttt{getData} request &
+    \raggedright Content of data object is read from main storage and sent to the client after a \texttt{getData} service request. &
+    \raggedright IOException is caught and written to log. Client receives error. \textbf{Could catch other Exceptions as well.}
+    \tabularnewline
+
+    \multicolumn{3}{p{\textwidth}}{
+      \subsection{\texttt{mainStorage.getDatafilesToArchive(long, long)}}
+    } \\
+
+    \texttt{Tidier} &
+    \raggedright \texttt{Tidier} asks main storage for datafiles to archive, in order to free up space. &
+    \raggedright Throwable is caught and written to log. \textbf{No changes needed.}
+    \tabularnewline
+
+    \multicolumn{3}{p{\textwidth}}{
+      \subsection{\texttt{mainStorage.getDatasetsToArchive(long, long)}}
+    } \\
+
+    \texttt{Tidier} &
+    \raggedright \texttt{Tidier} asks main storage for datasets to archive, in order to free up space. &
+    \raggedright Throwable is caught and written to log. \textbf{No changes needed.}
+    \tabularnewline
+
+    \multicolumn{3}{p{\textwidth}}{
+      \subsection{\texttt{mainStorage.getPath(String, String, String)}}
+    } \\
+
+    \raggedright \texttt{IdsBean} \texttt{getLink} request &
+    \raggedright Path of a datafile is determined after a \texttt{getLink} service request. &
+    \raggedright IOException is caught and written to log. \texttt{InternalException} is thrown to return HTTP status code 500. \textbf{Could catch other Exceptions as well.}
+    \tabularnewline
+
+    \multicolumn{3}{p{\textwidth}}{
+      \subsection{\texttt{mainStorage.put(DsInfo, String, InputStream)}}
+    } \\
+
+    \raggedright \texttt{IdsBean} \texttt{put} request &
+    \raggedright Datafile is put into main storage after a \texttt{put} service request. &
+    \raggedright IOException is caught and written to log. \texttt{InternalException} is thrown to return HTTP status code 500. \textbf{Could catch other Exceptions as well.}
+    \tabularnewline
+
+    \multicolumn{3}{p{\textwidth}}{
+      \subsection{\texttt{mainStorage.put(InputStream, String)}}
+    } \\
+
+    \raggedright \texttt{DsRestorer} &
+    \raggedright Datafile is copied to main storage during \texttt{restore} deferred operation. &
+    \raggedright Exception is caught and written to log. \textbf{No changes needed.}
+    \tabularnewline
+
+    \multicolumn{3}{p{\textwidth}}{
+      \subsection{\texttt{mainStorage.lock(DsInfo, boolean)}}
+    } \\
+
+    \texttt{LockManager} &
+    \raggedright \texttt{LockManager} asks main storage to acquire a file system level lock for a dataset. &
+    \raggedright IOException and AlreadyLockedException are caught and then thrown. \textbf{No changes needed.}
+    \tabularnewline
+
+\end{longtable}
+
+\pagebreak
+
+
+\section{Conclusion}
+
+The only time errors within the storage plugin methods have the potential to be harmful, is when they are thrown during deferred operations.
+
+In all other cases, the calling client can be (and is being) informed about the error via the HTTP status code.
+Also, there is no possibility for data loss in these cases.
+
+As for errors during deferred operations, the only truly potentially critical operations are \texttt{restore} and \texttt{write}, as they copy data between main and archive storage.
+
+Errors during \texttt{restore} deferred operations are currently being protected against by marking them as "failure" or "success".
+As this information is stored in-memory, this method does not allow for IDS to be restarted.
+Nevertheless, it is sufficient to protect against unwanted behavior during \texttt{restore} deferred operations.
+
+The more critical case are errors during \texttt{write} deferred operations, because it is the equivalent of archiving (i.e. "saving") a piece of data from the main storage permanently.
+Currently, errors during \texttt{write} deferred operations are being protected against by creating special "marker" files.
+These files are being created before the operation is queued, and only being deleted after it has been completed successfully, surviving even a system restart of IDS.
+The way IDS deals with leftover marker files after a restart might be further investigated and improved, though.
+
+
+\end{document}
